@@ -104,22 +104,23 @@ def get_frontend_data():
 
 # --- ROUTES ---
     
+# 1. MAIN PAGE LOAD (Injects Data)
 @app.route('/')
 def index():
-    # 1. Fetch rooms
-    rooms = Room.query.all()
+    if not current_user.is_authenticated:
+        return render_template('index.html', user=None)
+    
+    # Get the formatted data
+    rooms_js, reservations_js, schedule_js, archive_js = get_frontend_data()
+    
+    return render_template('index.html', 
+                           user=current_user,
+                           rooms_js=json.dumps(rooms_js),
+                           reservations_js=json.dumps(reservations_js),
+                           schedule_js=json.dumps(schedule_js),
+                           archive_js=json.dumps(archive_js))
 
-    # --- THE SNITCH: Print to Terminal ---
-    print("--------------------------------------------------")
-    print(f"DEBUG CHECK: I found {len(rooms)} rooms in the database.")
-    for r in rooms:
-        print(f" - Room: {r.name} (ID: {r.id})")
-    print("--------------------------------------------------")
-    # -------------------------------------
-
-    # Send them to the template
-    return render_template('index.html', user=current_user, rooms=rooms)
-
+# 2. LOGIN/LOGOUT ROUTES
 @app.route('/login', methods=['POST'])
 def login():
     # Get data from the form (we will update the HTML to send this)
@@ -140,6 +141,40 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('index'))
+
+# 3. FILE UPLOAD ROUTE
+@app.route('/upload', methods=['POST'])
+@login_required
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    if file and file.filename.endswith('.pdf'):
+        filename = secure_filename(file.filename)
+        # Add timestamp to make filename unique
+        save_name = f"{int(datetime.now().timestamp())}_{filename}"
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], save_name))
+        return jsonify({'success': True, 'filename': save_name})
+    
+    return jsonify({'error': 'Invalid file type'}), 400
+
+# 4. AI CHAT ROUTE (Secure Proxy)
+@app.route('/api/chat', methods=['POST'])
+@login_required
+def chat_proxy():
+    data = request.get_json()
+    
+    # Call Google's API from Python so the Key isn't exposed in HTML
+    response = requests.post(
+        f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+        headers={'Content-Type': 'application/json'},
+        json=data
+    )
+    return jsonify(response.json())
+
 
 # --- SETUP ROUTE (Run this once to create the Admin) ---
 @app.route('/setup')
@@ -255,21 +290,7 @@ def setup():
         </ul>
         <a href='/'>Go to Dashboard</a>
         """
-    
-@app.route('/api/login', methods=['POST'])
-def api_login():
-    data = request.get_json() # Get the JS data
-    username = data.get('username')
-    password = data.get('password')
 
-    user = User.query.filter_by(username=username).first()
-
-    if user and user.check_password(password):
-        login_user(user) # This sets the "Logged In" cookie
-        return jsonify({'status': 'success', 'role': user.role})
-    else:
-        return jsonify({'status': 'error', 'message': 'Invalid username or password'}), 401
-    
-
+# 6. START THE APP
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
