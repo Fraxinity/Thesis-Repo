@@ -1,0 +1,2359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VacanSee: Campus Event Space Reservation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Very Light Gray */
+        }
+        /* Login Page Styles */
+        #login-page { display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #e2e8f0; }
+        .login-card { background: white; padding: 3rem; border-radius: 1.5rem; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); width: 100%; max-width: 420px; }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            height: 100vh;
+        }
+        .sidebar {
+            background-color: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+        }
+        .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        header {
+            padding: 1.5rem 2.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .main-content {
+            padding: 2.5rem;
+            flex-grow: 1;
+        }
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            color: #475569;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-button:hover {
+            background-color: #f1f5f9;
+            color: #0ea5e9;
+        }
+        .nav-button.active {
+            background-color: #e0f2fe;
+            color: #0ea5e9;
+            font-weight: 600;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        #ai-modal .response-bubble { max-width: 90%; padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.5rem; line-height: 1.5; word-wrap: break-word; }
+        #ai-modal .user-bubble { background-color: #0ea5e9; color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        #ai-modal .ai-bubble { background-color: #f1f5f9; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        .ai-loading-bubble { background-color: #e0f2fe; color: #0ea5e9; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        
+        /* Calendar Styles */
+        .calendar-header-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+            border: 1px solid #e2e8f0;
+        }
+        .calendar-day-header {
+            text-align: center;
+            font-semibold;
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            background-color: #f8fafc;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+        }
+        .calendar-day {
+            background-color: white;
+            min-height: 120px;
+            padding: 0.5rem;
+        }
+        .calendar-day-empty {
+            background-color: #f8fafc;
+            min-height: 120px;
+        }
+        .calendar-day-number {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        .calendar-day-today .calendar-day-number {
+            background-color: #0ea5e9;
+            color: white;
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Event is now clickable */
+        .calendar-day-event {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            background-color: #38bdf8;
+            color: white;
+            border-radius: 4px;
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer; /* Change cursor to indicate clickability */
+            transition: background-color 0.2s;
+        }
+        .calendar-day-event:hover {
+            background-color: #0ea5e9; /* Slightly darker on hover */
+        }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-content { background: white; padding: 2rem; border-radius: 1rem; max-width: 800px; width: 90%; transform: scale(0.95); transition: transform 0.3s; max-height: 90vh; overflow-y: auto; }
+        .modal-overlay.visible .modal-content { transform: scale(1); }
+        
+        /* Reservation Card Style */
+        .reservation-card-admin {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .reservation-card-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        
+        /* Print-specific styles */
+        @media print {
+            body * { visibility: hidden; }
+            #print-modal, #print-modal * { visibility: visible; }
+            #print-modal { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; max-height: 100%; border-radius: 0; padding: 1rem; }
+            #print-modal-header, #print-modal-footer { display: none; }
+            .print-section-title { border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; background-color: #eee; padding: 4px; font-weight: bold; margin-top: 1rem; }
+            .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+            .print-grid-full { grid-column: 1 / -1; }
+            .print-field { margin-bottom: 0.5rem; }
+            .print-field label { font-size: 0.8rem; color: #555; display: block; }
+            .print-field span { font-size: 1rem; font-weight: 500; border-bottom: 1px solid #ddd; display: block; padding: 2px 0; }
+            .print-signatures { margin-top: 3rem; display: flex; justify-content: space-around; }
+            .print-signature-box { text-align: center; width: 40%; border-top: 1px solid #000; padding-top: 0.5rem; font-weight: 500; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Page -->
+    <div id="login-page">
+        <div class="login-card">
+            <div class="text-center mb-10"><h1 class="text-4xl font-bold text-slate-800">Vacan<span class="text-sky-500">See</span></h1><p class="text-slate-500 mt-2">Sign in to book event spaces</p></div>
+            <form id="login-form">
+                <div class="mb-4"><label for="username" class="block text-sm font-medium text-slate-700 mb-1">Username</label><input type="text" id="username" value="admin" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500" required></div>
+                <div class="mb-6"><label for="password" class="block text-sm font-medium text-slate-700 mb-1">Password</label><input type="password" id="password" value="admin123" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500" required></div>
+                <button type="submit" class="w-full bg-sky-500 text-white py-3 rounded-lg font-semibold hover:bg-sky-600 transition">Sign In</button>
+                <p id="login-error" class="text-red-500 text-sm text-center mt-4"></p>
+                <div class="text-center text-xs text-slate-400 mt-6"><p>Hint: Use 'admin'/'admin123' or 'user'/'user123'</p></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-container" class="app-container hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="text-sky-500 mb-10"><h1 class="text-3xl font-bold">Vacan<span class="text-sky-400">See</span></h1></div>
+            <nav class="flex flex-col gap-4 flex-grow w-full">
+                <div>
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3">Main</h2>
+                    <button data-view="dashboard" class="nav-button active w-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg><span>Dashboard</span></button>
+                </div>
+                 <div>
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3">Views</h2>
+                    <button data-view="calendar" class="nav-button w-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg><span>Event Calendar</span></button>
+                    <!-- NEW FACILITY BUTTON -->
+                    <button data-view="facilities" class="nav-button w-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6M20 6v14a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2V6"/><rect x="4" y="2" width="16" height="4" rx="2"/></svg><span>Facilities Catalog</span></button>
+                    <!-- ARCHIVE VIEW BUTTON (Now for all users) -->
+                    <button data-view="archive" id="archive-nav-btn" class="nav-button w-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" /><path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                        <span>Archive</span>
+                    </button>
+                </div>
+                <!-- ADMIN SECTION -->
+                <div id="admin-nav-section">
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3">Admin</h2>
+                    <button data-view="reservations" id="reservations-nav-btn" class="nav-button w-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm12 5H5v5h10V10zm-9-3a1 1 0 000 2h4a1 1 0 000-2H6z" clip-rule="evenodd" /></svg>
+                        <span>Requests</span>
+                    </button>
+                </div>
+            </nav>
+            <div class="mt-auto border-t border-slate-200 pt-4">
+                <div class="flex items-center gap-3">
+                    <img id="sidebar-avatar" src="" alt="User" class="w-10 h-10 rounded-full">
+                    <div>
+                        <p id="sidebar-username" class="font-semibold text-slate-700"></p>
+                        <button id="logout-btn" class="text-xs text-slate-500 hover:text-sky-500">Log out</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Wrapper -->
+        <div class="main-wrapper no-scrollbar">
+            <header>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-4">
+                        <!-- Header content -->
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button id="ai-modal-btn" class="text-slate-500 hover:text-sky-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1.5 1.5 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 00-1-1v-.5a1.5 1.5 0 01-3 0v.5a1 1 0 00-1 1H6a1 1 0 01-1-1v-3a1 1 0 011-1h.5a1.5 1.5 0 000-3H6a1 1 0 01-1-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" /></svg></button>
+                        <button class="text-slate-500 hover:text-sky-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></button>
+                        <div id="header-avatar" class="w-10 h-10 rounded-full bg-slate-200 bg-cover bg-center"></div>
+                    </div>
+                </div>
+            </header>
+            <main class="main-content">
+                <div id="dashboard-view" data-view="dashboard">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2" id="dashboard-title">Welcome</h2>
+                    <p class="text-slate-500 mb-8" id="current-datetime">Loading...</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white border border-slate-200 rounded-xl p-6"><h4 class="text-slate-500 font-medium">Available Spaces Today</h4><p id="stat-available-spaces" class="text-4xl font-bold text-slate-800 mt-2">0</p></div>
+                        <div class="bg-white border border-slate-200 rounded-xl p-6"><h4 id="pending-requests-title" class="text-slate-500 font-medium">My Pending Requests</h4><p id="stat-pending-requests" class="text-4xl font-bold text-slate-800 mt-2">0</p></div>
+                        <div class="bg-white border border-slate-200 rounded-xl p-6"><h4 class="text-slate-500 font-medium">My Approved Events</h4><p id="stat-approved-events" class="text-4xl font-bold text-slate-800 mt-2">0</p></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white border border-slate-200 rounded-xl"><h3 class="text-xl font-semibold text-slate-700 p-6">Event Space Availability (Now)</h3><div id="space-availability-list" class="p-6 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4"></div></div>
+                        <div class="bg-white border border-slate-200 rounded-xl"><h3 class="text-xl font-semibold text-slate-700 p-6">My Reservations</h3><div id="my-reservations-list" class="p-6 pt-0 space-y-3 max-h-96 overflow-y-auto"></div></div>
+                    </div>
+                </div>
+                
+                <div id="calendar-view" data-view="calendar" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-2">
+                          <button id="calendar-prev" class="px-3 py-1 bg-slate-200 rounded-md hover:bg-slate-300">&lt;</button>
+                          <h3 id="calendar-month-year" class="text-xl font-semibold w-36 text-center">Loading...</h3>
+                          <button id="calendar-next" class="px-3 py-1 bg-slate-200 rounded-md hover:bg-slate-300">&gt;</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <label for="calendar-filter" class="text-sm font-medium">Filter by Space:</label>
+                          <select id="calendar-filter" class="px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
+                            <option value="all">All Spaces</option>
+                            <!-- Options populated by JS -->
+                          </select>
+                        </div>
+                    </div>
+                    <div class="calendar-header-grid">
+                        <div class="calendar-day-header">Sun</div>
+                        <div class="calendar-day-header">Mon</div>
+                        <div class="calendar-day-header">Tue</div>
+                        <div class="calendar-day-header">Wed</div>
+                        <div class="calendar-day-header">Thu</div>
+                        <div class="calendar-day-header">Fri</div>
+                        <div class="calendar-day-header">Sat</div>
+                    </div>
+                    <div id="calendar-grid-days" class="calendar-grid">
+                        <!-- Days populated by JS -->
+                    </div>
+                </div>
+
+                <!-- NEW: Facilities View (Users/Admin) -->
+                <div id="facilities-view" data-view="facilities" class="hidden">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-6">Facilities Catalog</h2>
+                    <div id="facilities-list-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <!-- Facility cards generated by JS -->
+                    </div>
+                </div>
+                
+                <!-- NEW: Reservations View (Admin Only) - REVISED UI/TEXT/COLOR -->
+                <div id="reservations-view" data-view="reservations" class="hidden flex flex-col gap-8">
+                    <h2 class="text-3xl font-bold text-slate-800">Reservation Approval Requests</h2>
+
+                    <!-- STAGE 1: CONCEPT APPROVAL - Using Sky Blue (Primary App Color) -->
+                    <div> 
+                        <!-- ADDED P-4 PADDING HERE -->
+                        <div class="bg-white border border-slate-200 rounded-xl p-4">
+                            <h3 class="text-xl font-bold text-sky-700">Stage 1: Concept Paper Approval</h3>
+                            <p class="text-slate-500 text-sm mb-4">This stage is for the approval of the <b>Concept Paper</b> uploaded by the user. Once approved, they can proceed to print and gather signatures on the Facility Form.</p>
+                            <div id="stage1-requests-container" class="space-y-3">
+                            <!-- Stage 1 Reservation cards populated by JS (Status: pending) -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- STAGE 2: FINAL FORM APPROVAL - Using Indigo/Purple (Secondary Admin Color) -->
+                    <div>
+                        <!-- ADDED P-4 PADDING HERE -->
+                        <div class="bg-white border border-slate-200 rounded-xl p-4">
+                            <h3 class="text-xl font-bold text-indigo-700">Stage 2: Final Facility Form Approval</h3>
+                            <p class="text-slate-500 text-sm mb-4">This stage is for the <b>final reservation approval</b>. We check the uploaded <b>Facility Form</b> for complete signatures from the required <b>coordinators</b>.</p>
+                            <div id="stage2-requests-container" class="space-y-3">
+                                <!-- Stage 2 Reservation cards populated by JS (Status: concept-approved & finalFormUploaded: true) -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NEW: Archive View (User & Admin) -->
+                <div id="archive-view" data-view="archive" class="hidden">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-6">Archived Items</h2>
+                    <p class="text-slate-500 mb-8" id="archive-description">This list includes all requests and events that have been manually archived. You can view the full details here.</p>
+                    <div id="archive-list-container" class="space-y-4">
+                        <p class="text-slate-500">Loading archived items...</p>
+                        <!-- Archived items populated by JS -->
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="reservation-modal" class="modal-overlay">
+        <div class="modal-content no-scrollbar">
+            <h3 id="modal-title" class="text-2xl font-bold mb-6">Request an Event Space</h3>
+            <!-- Added data-reservation-id for edit functionality -->
+            <form id="reservation-form" class="space-y-6" data-reservation-id="">
+                <fieldset>
+                    <legend class="text-lg font-semibold text-slate-800 mb-3">1. Event Details</legend>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2"><label for="event-name" class="block text-sm font-medium text-slate-700">Activity / Purpose</label><input type="text" id="event-name" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></div>
+                        
+                        <!-- NEW FIELDS: Person in Charge and Contact Number -->
+                        <div><label for="person-in-charge" class="block text-sm font-medium text-slate-700">Person in Charge</label><input type="text" id="person-in-charge" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div><label for="contact-number" class="block text-sm font-medium text-slate-700">Contact Number</label><input type="tel" id="contact-number" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></div>
+                        
+                        <div><label for="division" class="block text-sm font-medium text-slate-700">Division</label><input type="text" id="division" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div><label for="attendees" class="block text-sm font-medium text-slate-700">Number of Attendees</label><input type="number" id="attendees" required min="1" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-medium text-slate-700">Participants</label>
+                            <div class="flex flex-wrap items-center gap-4 mt-2">
+                                <label class="flex items-center"><input type="radio" name="participant-type" value="Student" class="mr-1"><span class="text-sm">Student</span></label>
+                                <label class="flex items-center"><input type="radio" name="participant-type" value="Employee" class="mr-1"><span class="text-sm">Employee</span></label>
+                                <label class="flex items-center"><input type="radio" name="participant-type" value="Others" class="mr-1" id="radio-others"><span class="text-sm">Others:</span></label>
+                                <!-- Fixed: Added hidden class initially -->
+                                <input type="text" id="participant-other" placeholder="Please specify..." class="flex-grow px-2 py-1 border border-slate-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 hidden">
+                            </div>
+                        </div>
+                        <div class="md:col-span-2"><label for="classification" class="block text-sm font-medium text-slate-700">Classification of Activity</label><select id="classification" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
+                            <option>Institutional</option><option>Co-curricular</option><option>Curricular</option><option>Extra-curricular</option><option>Outside Group</option>
+                        </select></div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend class="text-lg font-semibold text-slate-800 mb-3">2. Facility & Time Request</legend>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Facility / Venue now takes the full top row -->
+                        <div class="md:col-span-3">
+                            <label for="space-id" class="block text-sm font-medium text-slate-700">Facility / Venue</label>
+                            <select id="space-id" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></select>
+                        </div>
+                        
+                        <!-- Date Needed, Start Time, and End Time are now side-by-side in a 3-column row -->
+                        <div>
+                            <label for="date-needed" class="block text-sm font-medium text-slate-700">Date Needed</label>
+                            <input type="date" id="date-needed" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                        </div>
+                        <div>
+                            <label for="start-time" class="block text-sm font-medium text-slate-700">Start Time</label>
+                            <input type="time" id="start-time" required step="1800" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                        </div>
+                        <div>
+                            <label for="end-time" class="block text-sm font-medium text-slate-700">End Time</label>
+                            <input type="time" id="end-time" required step="1800" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend class="text-lg font-semibold text-slate-800 mb-3">3. Equipment & Services</legend>
+                    <div id="equipment-grid" class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-sm">
+                        <!-- Equipment list populated by JS -->
+                    </div>
+                </fieldset>
+                
+                <!-- Concept Paper Upload (Stage 1 Document) -->
+                <fieldset>
+                    <legend class="text-lg font-semibold text-slate-800 mb-3">4. Document Submission (Stage 1: Concept Paper)</legend>
+                    <div id="drop-area" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:border-sky-500 hover:bg-sky-50 transition-colors duration-200">
+                        <!-- Hidden actual file input -->
+                        <input type="file" id="concept-paper-upload" accept=".pdf" class="hidden">
+                        
+                        <!-- 1. DEFAULT STATE: Visible when no file is selected -->
+                        <div id="upload-default-state" class="flex flex-col items-center justify-center space-y-3">
+                            <!-- Cloud Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12V22"/><path d="M16 16l-4 4l-4-4"/></svg>
+
+                            <p class="font-semibold text-slate-700">Choose a file or drag & drop it here</p>
+                            <p id="file-status" class="text-sm text-slate-500">Only PDF format allowed, up to 10MB.</p>
+                            
+                            <label for="concept-paper-upload" class="browse-btn bg-sky-500 text-white py-2 px-4 rounded-lg font-medium shadow-md hover:bg-sky-600 transition duration-150 cursor-pointer">
+                                Browse File
+                            </label>
+                        </div>
+
+                        <!-- 2. SUCCESS STATE: Hidden by default, shown after file selection -->
+                        <div id="upload-success-state" class="hidden flex-col items-center justify-center space-y-3 p-4">
+                            <!-- Success Checkmark Icon (Green) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-500 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-8.58"></path><path d="M22 4L12 14.01l-3-3"></path></svg>
+                            <p class="text-lg font-bold text-green-600">Concept Paper Uploaded!</p>
+                            
+                            <!-- File Name Display -->
+                            <p id="file-name-display" class="font-medium text-slate-800 break-all"></p>
+                            
+                            <!-- Remove button to revert state -->
+                            <button type="button" id="remove-concept-paper-btn" class="text-sm text-red-500 hover:text-red-700 font-medium transition duration-150">
+                                Remove File
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-sm text-red-600 mb-2">Required: Upload the scanned/signed Concept Paper (PDF only).</p>
+                    <p id="concept-paper-current-file" class="text-sm text-slate-500 mt-2 hidden">Current file: <span class="font-semibold text-sky-600"></span>. Uploading a new file will replace it.</p>
+                </fieldset>
+
+                
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" id="cancel-reservation" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300">Cancel</button>
+                    <button type="submit" id="submit-reservation-btn" class="px-4 py-2 bg-sky-500 text-white rounded-lg font-semibold hover:bg-sky-600">Request Reservation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="reservation-detail-modal" class="modal-overlay">
+        <div class="modal-content max-w-4xl no-scrollbar">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h3 class="text-2xl font-bold text-slate-800">Reservation Details (<span id="detail-status" class="text-yellow-600">Pending</span>)</h3>
+                    <!-- Denial Reason (Visible only on denied reservations - MOVED BELOW STATUS) -->
+                    <div id="detail-denial-reason-container" class="mt-4 hidden">
+                        <span class="block text-xs text-red-500 font-bold">Admin Denial Reason</span>
+                        <p id="detail-denial-reason" class="font-medium text-red-700 border-l-4 border-red-500 pl-3 py-1 bg-red-50 rounded-md"></p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end gap-3">
+                    <button id="detail-modal-close" class="text-lg font-bold text-slate-500 hover:text-slate-800">&times;</button>
+                    <!-- Action Buttons Group (Edit, Archive, Delete) -->
+                    <div class="flex gap-2">
+                        <button id="detail-modal-edit" class="px-3 py-1 bg-sky-500 text-white rounded-lg text-sm font-semibold hover:bg-sky-600 transition hidden">Edit Details</button>
+                        <button id="detail-modal-archive" class="px-3 py-1 bg-slate-500 text-white rounded-lg text-sm font-semibold hover:bg-slate-600 transition hidden">Archive</button>
+                        <button id="detail-modal-delete" class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition hidden">Delete</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Reservation Info Panel -->
+                <div class="lg:col-span-3 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                         <h4 class="text-xl font-semibold">Event & Request Information</h4>
+                         <!-- NEW: Print Request Info Button (Visible if Concept Approved or Fully Approved) -->
+                         <button id="print-request-info-btn" class="px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm font-semibold hover:bg-indigo-600 transition hidden">Print Form for Signature</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                        <div class="col-span-2"><span class="block text-xs text-slate-500 font-medium">Activity / Purpose</span><span id="detail-purpose" class="font-semibold text-lg text-slate-800"></span></div>
+                        
+                        <div><span class="block text-xs text-slate-500 font-medium">Venue</span><span id="detail-venue" class="font-medium text-slate-700"></span></div>
+                        <div><span class="block text-xs text-slate-500 font-medium">Date & Time</span><span id="detail-date-time" class="font-medium text-slate-700"></span></div>
+
+                        <div><span class="block text-xs text-slate-500 font-medium">Requestor / Dept</span><span id="detail-requestor" class="font-medium text-slate-700"></span></div>
+                        <div><span class="block text-xs text-slate-500 font-medium">Filed On</span><span id="detail-date-filed" class="font-medium text-slate-700"></span></div>
+                        
+                        <div><span class="block text-xs text-slate-500 font-medium">Person in Charge</span><span id="detail-pic" class="font-medium text-slate-700"></span></div>
+                        <div><span class="block text-xs text-slate-500 font-medium">Contact Number</span><span id="detail-contact" class="font-medium text-slate-700"></span></div>
+                        
+                        <div><span class="block text-xs text-slate-500 font-medium">Attendees & Participants</span><span id="detail-attendees" class="font-medium text-slate-700"></span></div>
+                        <div><span class="block text-xs text-slate-500 font-medium">Classification / Division</span><span id="detail-classification" class="font-medium text-slate-700"></span></div>
+                        
+                        <div class="col-span-2 mt-2"><span class="block text-xs text-slate-500 font-medium">Equipment Requested</span><ul id="detail-equipment-list" class="list-disc list-inside mt-1 space-y-0.5 text-slate-700"></ul></div>
+                        
+                        <!-- Denial Reason moved to top for visibility -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Document Panels -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <!-- Document Panel: Concept Paper (Stage 1) -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 flex flex-col h-full">
+                    <h4 class="text-xl font-semibold mb-4 border-b pb-2">Stage 1: Concept Paper (PDF)</h4>
+                    <p class="text-sm font-medium text-slate-700 mb-4">File: <span id="detail-pdf-name" class="text-sky-600 font-bold"></span></p>
+                    
+                    <div id="stage-1-status-panel" class="flex-grow w-full border border-slate-300 rounded-lg p-4 bg-slate-100 flex items-center justify-center text-center">
+                        <p class="text-sm text-slate-500">
+                            Document Uploaded Successfully.
+                        </p>
+                    </div>
+                    
+                    <a id="detail-pdf-link" href="#" target="_blank" class="mt-4 w-full text-center bg-sky-500 text-white py-2 rounded-lg font-semibold hover:bg-sky-600 transition">View/Download Concept Paper</a>
+                </div>
+                
+                <!-- Document Panel: Stage 2 Facility Form (REVISED STRUCTURE) -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 flex flex-col h-full">
+                    <h4 class="text-xl font-semibold mb-4 border-b pb-2">Stage 2: Signed Facility Form</h4>
+                    
+                    <!-- File Name Display (Only visible when form is uploaded) -->
+                    <p id="detail-form-name-container" class="text-sm font-medium text-slate-700 mb-4 hidden">File: <span id="detail-form-name" class="text-indigo-600 font-bold"></span></p>
+                    
+                    <!-- Unified Document Content/Status Container -->
+                    <div id="stage-2-status-panel" class="flex-grow w-full border border-slate-300 rounded-lg p-4 bg-slate-100 flex flex-col items-center justify-center text-center transition-all">
+                        <!-- Content managed by JS -->
+                        <p id="stage-2-message" class="text-base font-medium text-slate-700 mb-4"></p>
+                        
+                        <!-- Upload Button (Only visible if concept-approved, for user, NOT uploaded) -->
+                        <button id="upload-stage-2-btn" class="text-sm bg-sky-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-sky-600 transition hidden">Upload Signed Form (PDF)</button>
+                    </div>
+                    
+                    <!-- View/Download Button (Only visible when form is uploaded - placed outside status panel for uniformity) -->
+                    <a id="download-stage-2-form" href="#" target="_blank" class="mt-4 w-full text-center bg-indigo-500 text-white py-2 rounded-lg font-semibold hover:bg-indigo-600 transition hidden">View/Download Signed Form</a>
+                    
+                    <!-- Hidden input for file upload -->
+                    <input type="file" id="stage-2-form-upload" accept=".pdf" class="hidden">
+                </div>
+            </div>
+
+            <!-- Admin Action Panel - REVISED COLORS -->
+            <div id="detail-action-panel" class="mt-8 pt-6 border-t border-slate-200">
+                <h4 class="text-lg font-semibold text-slate-800 mb-4">Admin Decision</h4>
+                
+                <!-- STAGE 1 ACTION (For 'pending' status) - Sky Blue (System Primary Color) -->
+                <div id="stage-1-actions" class="flex gap-4 items-center p-3 border border-sky-300 bg-sky-50 rounded-lg">
+                    <h5 class="text-base font-medium text-sky-700 min-w-[200px]">Stage 1: Concept Approval</h5>
+                    <button id="stage1-approve-btn" class="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition disabled:opacity-50">Approve Concept</button>
+                    <button id="stage1-deny-btn" class="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-50">Deny Request</button>
+                </div>
+                
+                <!-- STAGE 2 ACTION (For 'concept-approved' status with upload) - Indigo (Secondary Admin Color) -->
+                <div id="stage-2-actions" class="flex gap-4 items-center p-3 border border-indigo-300 bg-indigo-50 rounded-lg mt-4 hidden">
+                    <h5 class="text-base font-medium text-indigo-700 min-w-[200px]">Stage 2: Final Form Approval</h5>
+                    <button id="stage2-approve-btn" class="flex-1 px-4 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition disabled:opacity-50">Final Approve Reservation</button>
+                    <button id="stage2-deny-btn" class="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition disabled:opacity-50">Deny Final</button>
+                </div>
+                
+                <div id="deny-reason-container" class="mt-4 hidden p-4 border border-red-300 bg-red-50 rounded-lg">
+                    <label for="deny-reason" class="block text-sm font-medium text-red-700 mb-2">Reason for Denial (Required)</label>
+                    <textarea id="deny-reason" rows="3" class="w-full px-3 py-2 border border-red-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500" placeholder="Please explain why this request is being denied (e.g., date conflict, incomplete document)."></textarea>
+                    <div class="flex justify-end mt-3 gap-2">
+                        <button id="cancel-deny-btn" class="px-3 py-1 text-sm bg-slate-300 text-slate-800 rounded-lg hover:bg-slate-400">Cancel</button>
+                        <button id="confirm-deny-btn" class="px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50" disabled>Confirm Denial</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification-modal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <p id="notification-message" class="text-lg mb-6"></p>
+            <button id="notification-ok" class="px-6 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600">OK</button>
+        </div>
+    </div>
+    <div id="ai-modal" class="modal-overlay">
+        <div class="modal-content w-full max-w-lg h-[70vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4"><h3 class="text-2xl font-bold">Gemini AI Assistant</h3><button id="ai-modal-close" class="text-lg font-bold text-slate-500 hover:text-slate-800">&times;</button></div>
+            <div id="ai-response-container" class="flex-grow overflow-y-auto mb-4 p-4 bg-slate-50 rounded-lg no-scrollbar flex flex-col space-y-2"><div class="ai-bubble response-bubble">Hello! I'm the VacanSee Event Space Assistant. How can I help you with your campus facility reservations?</div></div>
+            <div class="flex items-center gap-2 mt-auto">
+                <input type="text" id="ai-prompt" placeholder="Ask about availability, capacity, or the reservation process..." class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <button id="ai-submit" class="bg-sky-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-sky-600 transition flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" /></svg></button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Print Modal -->
+    <div id="print-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div id="print-modal-header" class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Common Facility Request Form</h3>
+                <button id="print-modal-close" class="text-lg font-bold text-slate-500 hover:text-slate-800">&times;</button>
+            </div>
+            
+            <div id="print-form-content" class="text-slate-800">
+                <div class="text-center mb-4 border-b pb-4">
+                    <h4 class="text-xl font-bold">University of Perpetual Help System JONELTA</h4>
+                    <p class="text-sm">Common Facility Request Form</p>
+                </div>
+                
+                <div class="print-section-title">A. EVENT DETAILS</div>
+                <div class="print-grid mt-4">
+                    <div class="print-field print-grid-full"><label>Activity / Purpose:</label><span id="print-activity"></span></div>
+                    <!-- NEW FIELDS -->
+                    <div class="print-field"><label>Person in Charge:</label><span id="print-person-in-charge"></span></div>
+                    <div class="print-field"><label>Contact Number:</label><span id="print-contact-number"></span></div>
+                    
+                    <div class="print-field"><label>Department:</label><span id="print-department"></span></div>
+                    <div class="print-field"><label>Division:</label><span id="print-division"></span></div>
+                    <div class="print-field"><label>Number of Attendees:</label><span id="print-attendees"></span></div>
+                    <div class="print-field"><label>Participants:</label><span id="print-participants"></span></div>
+                    <div class="print-field"><label>Classification:</label><span id="print-classification"></span></div>
+                    <div class="print-field"><label>Date Filed:</label><span id="print-date-filed"></span></div>
+                </div>
+
+                <div class="print-section-title">B. FACILITY REQUEST</div>
+                <div class="print-grid mt-4">
+                    <div class="print-field"><label>Venue:</label><span id="print-venue"></span></div>
+                    <!-- REVISED FIELD -->
+                    <div class="print-field"><label>Date Needed:</label><span id="print-date-needed"></span></div>
+                    
+                    <!-- Removed Start Date and End Date -->
+                    <div class="print-field"><label>Start Time:</label><span id="print-start-time"></span></div>
+                    <div class="print-field"><label>End Time:</label><span id="print-end-time"></span></div>
+                </div>
+
+                <div class="print-section-title">C. EQUIPMENT / SERVICES</div>
+                <ul id="print-equipment-list" class="text-sm mt-4 grid grid-cols-3 gap-2 list-none p-0">
+                    <!-- Equipment list will be populated here by JS -->
+                </ul>
+                
+                <div class="print-section-title">D. ATTACHED DOCUMENTS</div>
+                <div class="print-grid mt-4">
+                    <div class="print-field print-grid-full"><label>Concept Paper File:</label><span id="print-concept-paper-file"></span></div>
+                    <div class="print-field print-grid-full"><label>Signed Facility Form File:</label><span id="print-signed-form-file"></span></div>
+                </div>
+
+
+                <div class="print-signatures">
+                    <div class="print-signature-box">Requesting Party</div>
+                    <div class="print-signature-box">Facility Coordinator Signature</div>
+                    <div class="print-signature-box">Approved By (EMC/Admin)</div>
+                </div>
+            </div>
+
+            <div id="print-modal-footer" class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button type="button" id="print-button" class="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600">Print Form</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        // --- GEMINI API CONFIGURATION ---
+        // ⚠️ SECURITY WARNING: In a real app, this MUST be on a secure server-side proxy.
+        // For demonstration in this single-file environment, we place it here.
+        // --- PASTE YOUR GEMINI API KEY HERE ---
+        const GEMINI_API_KEY = "AIzaSyCj8u8zcuA0r42G2UrI1hwJyX0ABSn2ySI"; 
+        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
+
+        // --- SYSTEM INSTRUCTION FOR RELEVANCE (The Key to filtering irrelevant questions) ---
+        const SYSTEM_INSTRUCTION = `
+You are VacanSee, the official Campus Event Space Reservation Assistant.
+Your only purpose is to help users and administrators with questions strictly related to campus facilities and the reservation process as defined by the system.
+
+You MUST follow these rules:
+
+1. Answer only based on the valid JSON context provided.
+   Only give information about:
+   - facility availability
+   - capacity
+   - location
+   - allowed activities
+   - reservation steps
+   - document requirements
+   - approval status
+
+2. Do NOT answer any question outside campus facilities and reservations.
+   If the user asks about unrelated topics (e.g., cooking, history, math, coding, celebrity gossip), politely decline with:
+   "I am only programmed to assist with campus facility reservations. Please ask me about room availability or the reservation process."
+
+3. Maintain a helpful, concise, and professional tone.
+   Give step-by-step guidance only when necessary.
+   Avoid assumptions or adding information outside the provided JSON data.
+
+4. Always follow the official VacanSee digital reservation workflow.
+   If the user asks how to reserve a space, describe the process exactly as defined:
+   Upload concept paper → EMC initial approval → Download/print form → Collect physical signatures → Upload signed form → Final EMC approval/decline.
+
+5. Special rule for Concept Paper questions:
+   If the user asks "How do I get a concept paper?" or similar, respond exactly:
+   "You must first speak with the facility coordinator responsible for the venue you want to reserve. The coordinator will explain the required details for the concept paper. After drafting the concept paper, you must have it signed by the Chancellor. Only the Concept Paper signed by the Chancellor can be uploaded to VacanSee for EMC's initial review."
+
+6. Never invent approval steps, signatures, or requirements not present in the JSON context.
+   If a required item is missing from the JSON, tell the user you cannot confirm it and ask them to contact the facility coordinator or EMC office.
+
+END OF SYSTEM INSTRUCTION.
+`;
+        
+        // --- MOCK DATABASES ---
+        const users = { 
+            admin: { username: 'admin', password: 'admin123', role: 'admin', department: 'Administration' }, 
+            user: { username: 'user', password: 'user123', role: 'user', department: 'College of Computer Studies' } 
+        };
+        
+        let eventSpaces = [ 
+            { id: 'pat', name: 'Performing Arts Theatre', capacity: 1500, usualActivity: 'Concerts, Graduation Ceremonies, Large Plays', description: 'A state-of-the-art facility designed for major university events, featuring professional lighting and sound systems.' }, 
+            { id: 'mua', name: 'Medical University Auditorium', capacity: 800, usualActivity: 'Lectures, Medical Seminars, Academic Symposia', description: 'A large, tiered auditorium ideal for professional academic and medical conferences.' },
+            { id: 'quad', name: 'Quadrangle', capacity: 5000, usualActivity: 'School Fairs, Food Stalls, Outdoor Exhibitions', description: 'The central open field, perfect for large-scale outdoor student gatherings and school-wide events.' },
+            { id: 'apark', name: 'Achievers Park', capacity: 300, usualActivity: 'Quiet Study, Small Gatherings, Relaxation', description: 'A landscaped area with benches and pathways, suitable for outdoor classes and informal meetings.' },
+            { id: 'chapel', name: 'Campus Chapel', capacity: 200, usualActivity: 'Mass, Religious Services, Weddings', description: 'A solemn and quiet space for spiritual activities and religious events.' },
+            { id: 'oval', name: 'Oval', capacity: 10000, usualActivity: 'Athletic Training, Track and Field Meets, Large Outdoor Concerts', description: 'The main sports field with a running track, used primarily for large athletic and physical activities.' },
+            { id: 'gym', name: 'GYM and Sports Center', capacity: 5000, usualActivity: 'Basketball/Volleyball Games, Indoor Sports Fest, Exams', description: 'A versatile indoor sports complex that can be converted for major exams or indoor conventions.' }, 
+            { id: 'spool', name: 'Swimming Pool', capacity: 100, usualActivity: 'Swimming Competitions, Training, Aquatic Events', description: 'The university pool area, restricted mostly to sports and academic aquatic activities.' },
+            { id: 'maud', name: 'Mini Auditorium', capacity: 250, usualActivity: 'Student Organization Meetings, Film Viewings, Small Seminars', description: 'A smaller, more intimate setting suitable for group discussions and presentations.' }
+        ];
+        
+        // Mock eventSchedule now only holds *fully* approved events (Status: approved)
+        // NOTE: eventSchedule holds FINALIZED events that occupy space on the calendar.
+        let eventSchedule = [ 
+            { id: 1, spaceId: 'pat', activityPurpose: 'University Play Rehearsals', startDate: '2025-12-05', endDate: '2025-12-05', startTime: '13:00', endTime: '17:00', user: 'admin', department: 'Arts Dept', status: 'approved', personInCharge: 'Jane Doe', contactNumber: '09123456789', equipment: { tables: 0, chairs: 50, 'eq-sound-system': true }, classification: 'Co-curricular', division: 'Arts', attendees: 20, participantType: 'Student', conceptPaperFilename: 'PlayRehearsalConcept.pdf', finalFormFilename: 'PlayRehearsalForm.pdf', finalFormUploaded: true }, 
+            { id: 2, spaceId: 'gym', activityPurpose: 'Varsity Basketball Practice', startDate: '2025-12-05', endDate: '2025-12-05', startTime: '15:00', endTime: '18:00', user: 'admin', department: 'Sports Dept', status: 'approved', personInCharge: 'John Smith', contactNumber: '09987654321', equipment: {}, classification: 'Extra-curricular', division: 'Sports', attendees: 50, participantType: 'Student', conceptPaperFilename: 'BasketballPracticePlan.pdf', finalFormFilename: 'BasketballPracticeForm.pdf', finalFormUploaded: true },
+            { id: 3, spaceId: 'maud', activityPurpose: 'Tech Seminar', startDate: '2025-12-06', endDate: '2025-12-06', startTime: '09:00', endTime: '12:00', user: 'user', department: 'College of Computer Studies', status: 'approved', personInCharge: 'User Default', contactNumber: '09000000000', equipment: { 'eq-lcd-projector': true, 'eq-microphone': 2, 'eq-speaker': 2 }, classification: 'Curricular', division: 'CCS', attendees: 100, participantType: 'Student', conceptPaperFilename: 'TechSeminarProposal.pdf', finalFormFilename: 'TechSeminarForm.pdf', finalFormUploaded: true }
+        ];
+        
+        // Mock reservations now include 'pending', 'concept-approved', and 'denied' statuses.
+        // NOTE: reservations holds PENDING and DENIED REQUESTS.
+        let reservations = [ 
+            { id: 101, spaceId: 'maud', activityPurpose: 'Org Leadership Seminar', startDate: '2025-12-07', endDate: '2025-12-07', startTime: '10:00', endTime: '12:00', status: 'pending', user: 'user', department: 'College of Computer Studies', division: 'CCS', attendees: 50, participantType: 'Student', classification: 'Co-curricular', dateFiled: '2025-12-01', personInCharge: 'User Default', contactNumber: '09000000000', equipment: { 'eq-tables': 2, 'eq-chairs': 50, 'eq-ph-flag': true, 'eq-lcd-projector': true, 'eq-microphone': 2, 'eq-speaker': 2, 'eq-laptop': 1 }, conceptPaperFilename: 'SeminarConceptPaper.pdf', finalFormFilename: 'OrgSeminarForm.pdf', finalFormUploaded: false }, 
+            { id: 102, spaceId: 'gym', activityPurpose: 'Sports Fest Planning', startDate: '2025-12-09', endDate: '2025-12-09', startTime: '15:00', endTime: '17:00', status: 'concept-approved', user: 'user', department: 'College of Computer Studies', division: 'CCS', attendees: 30, participantType: 'Student', classification: 'Extra-curricular', dateFiled: '2025-12-01', personInCharge: 'User Default', contactNumber: '09000000000', equipment: { 'eq-tables': 5, 'eq-chairs': 30 }, conceptPaperFilename: 'SportsFestConcept.pdf', finalFormFilename: 'SportsFestForm.pdf', finalFormUploaded: true }, // Example of Concept Approved & Form Uploaded (Awaiting Final Approval)
+            { id: 103, spaceId: 'pat', activityPurpose: 'General Assembly', startDate: '2025-12-12', endDate: '2025-12-12', startTime: '08:00', endTime: '12:00', status: 'denied', denialReason: 'Date conflict with Administration annual planning event.', user: 'admin', department: 'Administration', division: 'Admin', attendees: 200, participantType: 'Employee', classification: 'Institutional', dateFiled: '2025-12-01', personInCharge: 'Admin Default', contactNumber: '09000000001', equipment: {}, conceptPaperFilename: 'AssemblyConcept.pdf', finalFormFilename: 'AssemblyForm.pdf', finalFormUploaded: false }
+            , // Awaiting Upload Example (Under Review)
+            { id: 104, spaceId: 'mua', activityPurpose: 'Medicine Symposium', startDate: '2025-12-15', endDate: '2025-12-15', startTime: '14:00', endTime: '17:00', status: 'concept-approved', user: 'admin', department: 'Medical Dept', division: 'Med', attendees: 100, participantType: 'Employee', classification: 'Curricular', dateFiled: '2025-12-01', personInCharge: 'Dr. Cruz', contactNumber: '09170001111', equipment: { 'eq-lcd-projector': true, 'eq-microphone': 2 }, conceptPaperFilename: 'SymposiumConcept.pdf', finalFormFilename: 'SymposiumForm.pdf', finalFormUploaded: false }
+        ];
+        
+        // NEW MOCK ARCHIVE ARRAY
+        let archive = [
+             { id: 201, spaceId: 'apark', activityPurpose: 'Student Protest', startDate: '2025-11-05', endDate: '2025-11-05', startTime: '10:00', endTime: '12:00', user: 'user', department: 'Students', status: 'denied', denialReason: 'Inappropriate use of facility.', classification: 'Extra-curricular', dateFiled: '2025-11-01', personInCharge: 'Student Org', contactNumber: '09123456789', equipment: {}, conceptPaperFilename: 'ProtestConcept.pdf', finalFormFilename: '', finalFormUploaded: false, type: 'request', archivedAt: '2025-11-01' }
+        ];
+
+        // --- UI ELEMENT GRAB ---
+        const loginPage = document.getElementById('login-page');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        const adminNavSection = document.getElementById('admin-nav-section');
+        const navButtons = document.querySelectorAll('.nav-button');
+        const views = { dashboard: document.getElementById('dashboard-view'), calendar: document.getElementById('calendar-view'), reservations: document.getElementById('reservations-view'), facilities: document.getElementById('facilities-view'), archive: document.getElementById('archive-view') };
+        
+        const currentDatetimeEl = document.getElementById('current-datetime');
+        const sidebarAvatar = document.getElementById('sidebar-avatar');
+        const headerAvatar = document.getElementById('header-avatar');
+        const sidebarUsername = document.getElementById('sidebar-username');
+        const dashboardTitle = document.getElementById('dashboard-title');
+        
+        const aiModal = document.getElementById('ai-modal');
+        const aiModalBtn = document.getElementById('ai-modal-btn');
+        const aiModalClose = document.getElementById('ai-modal-close');
+        
+        const statAvailableSpaces = document.getElementById('stat-available-spaces');
+        const statPendingRequests = document.getElementById('stat-pending-requests');
+        const statApprovedEvents = document.getElementById('stat-approved-events');
+        const pendingRequestsTitle = document.getElementById('pending-requests-title');
+        
+        const spaceAvailabilityList = document.getElementById('space-availability-list');
+        const myReservationsList = document.getElementById('my-reservations-list');
+        
+        const calendarGridDays = document.getElementById('calendar-grid-days');
+        const calendarMonthYear = document.getElementById('calendar-month-year');
+        const calendarPrevBtn = document.getElementById('calendar-prev');
+        const calendarNextBtn = document.getElementById('calendar-next');
+        const calendarFilter = document.getElementById('calendar-filter');
+
+        // NEW RESERVATIONS VIEW ELEMENTS
+        const stage1RequestsContainer = document.getElementById('stage1-requests-container');
+        const stage2RequestsContainer = document.getElementById('stage2-requests-container');
+        
+        const aiPromptInput = aiModal.querySelector('#ai-prompt');
+        const aiSubmitBtn = aiModal.querySelector('#ai-submit');
+        const aiResponseContainer = aiModal.querySelector('#ai-response-container');
+        
+        const reservationModal = document.getElementById('reservation-modal');
+        const reservationDetailModal = document.getElementById('reservation-detail-modal'); 
+        const notificationModal = document.getElementById('notification-modal');
+        
+        const cancelReservationBtn = reservationModal.querySelector('#cancel-reservation');
+        const notificationOkBtn = notificationModal.querySelector('#notification-ok');
+        const reservationForm = document.getElementById('reservation-form');
+        const equipmentGrid = document.getElementById('equipment-grid');
+        const submitReservationBtn = document.getElementById('submit-reservation-btn'); 
+
+        // Elements for Reservation Form
+        const conceptPaperUpload = document.getElementById('concept-paper-upload');
+        const dropArea = document.getElementById('drop-area');
+        const defaultState = document.getElementById('upload-default-state');
+        const successState = document.getElementById('upload-success-state');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const removeConceptPaperBtn = document.getElementById('remove-concept-paper-btn');
+        const participantTypeRadios = reservationForm.querySelectorAll('input[name="participant-type"]');
+        const participantOtherInput = document.getElementById('participant-other'); 
+        const conceptPaperCurrentFile = document.getElementById('concept-paper-current-file'); 
+
+        // Reservation Detail Modal Elements (NEW)
+        const detailModalClose = document.getElementById('detail-modal-close');
+        const detailModalEdit = document.getElementById('detail-modal-edit'); 
+        const printRequestInfoBtn = document.getElementById('print-request-info-btn'); 
+        // NEW ARCHIVE/DELETE BUTTONS
+        const detailModalArchive = document.getElementById('detail-modal-archive');
+        const detailModalDelete = document.getElementById('detail-modal-delete');
+        
+        // MOVED DENIAL REASON
+        const detailDenialReasonContainer = document.getElementById('detail-denial-reason-container');
+        const detailDenialReason = document.getElementById('detail-denial-reason');
+
+        // NEW STAGE ACTION BUTTONS
+        const stage1Actions = document.getElementById('stage-1-actions');
+        const stage1ApproveBtn = document.getElementById('stage1-approve-btn');
+        const stage1DenyBtn = document.getElementById('stage1-deny-btn');
+        const stage2Actions = document.getElementById('stage-2-actions');
+        const stage2ApproveBtn = document.getElementById('stage2-approve-btn');
+        const stage2DenyBtn = document.getElementById('stage2-deny-btn');
+        
+        const denyReasonContainer = document.getElementById('deny-reason-container');
+        const denyReasonInput = document.getElementById('deny-reason');
+        const cancelDenyBtn = document.getElementById('cancel-deny-btn');
+        const confirmDenyBtn = document.getElementById('confirm-deny-btn');
+        
+        // NEW STAGE 2 UPLOAD ELEMENTS
+        const stage1StatusPanel = document.getElementById('stage-1-status-panel');
+        const stage2StatusPanel = document.getElementById('stage-2-status-panel');
+        const downloadStage2Form = document.getElementById('download-stage-2-form'); 
+        const detailFormNameContainer = document.getElementById('detail-form-name-container'); 
+        const detailFormName = document.getElementById('detail-form-name'); 
+        
+        const stage2FormUpload = document.getElementById('stage-2-form-upload');
+        
+        // Print Modal Elements
+        const printModal = document.getElementById('print-modal');
+        const printModalClose = document.getElementById('print-modal-close');
+        const printButton = document.getElementById('print-button');
+        const printSignedFormFile = document.getElementById('print-signed-form-file');
+        
+        // Archive View Elements
+        const archiveListContainer = document.getElementById('archive-list-container');
+        const archiveDescription = document.getElementById('archive-description');
+
+
+        // --- APP STATE ---
+        let currentUser = null;
+        let intervals = [];
+        let calendarDate = new Date();
+        const equipmentList = [
+            { id: 'eq-tables', label: 'Tables', type: 'number' }, { id: 'eq-chairs', label: 'Chairs', type: 'number' }, { id: 'eq-laptop', label: 'Laptop', type: 'number' },
+            { id: 'eq-ph-flag', label: 'PH Flag', type: 'checkbox' }, { id: 'eq-college-flag', label: 'College Flag', type: 'checkbox' }, { id: 'eq-university-flag', label: 'University Flag', type: 'checkbox' },
+            { id: 'eq-lcd-projector', label: 'LCD Projector', type: 'checkbox' }, { id: 'eq-white-screen', label: 'White Screen', type: 'checkbox' }, { id: 'eq-tv', label: 'TV', type: 'checkbox' },
+            { id: 'eq-still-camera', label: 'Still Camera', type: 'checkbox' }, { id: 'eq-video-camera', label: 'Video Camera', type: 'checkbox' },
+            { id: 'eq-sound-system', label: 'Sound System', type: 'checkbox' }, { id: 'eq-microphone', label: 'Microphone', type: 'number' }, 
+            { id: 'eq-speaker', label: 'Speaker', type: 'number' }, { id: 'eq-lights-setup', label: 'Lights Setup', type: 'checkbox' }, { id: 'eq-podium', label: 'Podium', type: 'checkbox' }
+        ];
+        
+        // Hold the currently viewed reservation in the detail modal
+        let currentReservation = null;
+
+        // --- HELPER & CORE LOGIC FUNCTIONS ---
+        const timeToMinutes = (timeStr) => { if (!timeStr) return 0; const [h, m] = timeStr.split(':').map(Number); return h * 60 + m; };
+        const getEventSpaceById = (spaceId) => eventSpaces.find(s => s.id === spaceId);
+        // Function to find an approved event by ID from eventSchedule
+        const getApprovedEventById = (id) => eventSchedule.find(e => e.id === id);
+        // Function to find a request by ID from reservations or archive
+        const getRequestById = (id) => reservations.find(r => r.id === id); // Requests should only be in the reservations array if active.
+
+        function showModal(modal) { modal.classList.add('visible'); }
+        function hideModal(modal) { modal.classList.remove('visible'); }
+        function showNotification(message) { notificationModal.querySelector('#notification-message').textContent = message; showModal(notificationModal); }
+        
+        function parseDate(dateStr) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        function isSpaceOccupied(spaceId, date) {
+            // Note: This check is simplified for dashboard, checking only if *any* event is active at the exact time 'date'
+            const checkTime = date.getTime();
+            // We only consider fully APPROVED events for availability checks (and exclude archived ones)
+            const allBookings = eventSchedule.filter(e => e.status !== 'archived');
+            return allBookings.some(e => {
+                if (e.spaceId !== spaceId) return false;
+                const start = new Date(`${e.startDate}T${e.startTime}`).getTime();
+                const end = new Date(`${e.endDate}T${e.endTime}`).getTime();
+                return checkTime >= start && checkTime < end;
+            });
+        }
+        
+        function isDateRangeAvailable(spaceId, dateNeeded, startTime, endTime, excludeId = null) {
+            const newStart = new Date(`${dateNeeded}T${startTime}`).getTime();
+            const newEnd = new Date(`${dateNeeded}T${endTime}`).getTime();
+            
+            if (newStart >= newEnd) return false; 
+            
+            // Check against all existing approved events (excluding archived ones)
+            const allBookings = eventSchedule.filter(e => e.status !== 'archived');
+            
+            for (const event of allBookings) {
+                if (event.id === excludeId) continue; // Skip the event if we are editing it
+                if (event.spaceId !== spaceId) continue;
+                
+                const oldStart = new Date(`${event.startDate}T${event.startTime}`).getTime();
+                const oldEnd = new Date(`${event.endDate}T${event.endTime}`).getTime();
+                
+                // Check for overlap: (StartA < EndB) and (EndA > StartB)
+                if (newStart < oldEnd && newEnd > oldStart) {
+                    return false; // Found an overlap
+                }
+            }
+            return true; // No overlaps
+        }
+
+        function showSuccessState(fileName) {
+            fileNameDisplay.textContent = fileName;
+            dropArea.classList.remove('border-slate-300', 'hover:border-sky-500', 'hover:bg-sky-50', 'cursor-pointer');
+            dropArea.classList.add('border-green-500', 'bg-green-50', 'cursor-default');
+            defaultState.classList.add('hidden');
+            successState.classList.remove('hidden');
+        }
+
+        function showDefaultState() {
+            conceptPaperUpload.value = '';
+            dropArea.classList.remove('border-green-500', 'bg-green-50', 'cursor-default');
+            dropArea.classList.add('border-slate-300', 'hover:border-sky-500', 'hover:bg-sky-50', 'cursor-pointer');
+            successState.classList.add('hidden');
+            defaultState.classList.remove('hidden');
+            conceptPaperCurrentFile.classList.add('hidden'); // Hide the current file info
+        }
+        
+        function appendMessage(text, sender) { 
+            const bubble = document.createElement('div'); 
+            bubble.className = `response-bubble ${sender}-bubble`; 
+            bubble.textContent = text; 
+            aiResponseContainer.appendChild(bubble); 
+            aiResponseContainer.scrollTop = aiResponseContainer.scrollHeight; 
+        }
+        
+        function updateDateTime() {
+            const now = new Date();
+            currentDatetimeEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        
+        function updateAllViews() { 
+            updateDashboard(); 
+            renderFullCalendar(); 
+            renderFacilitiesView(); 
+            // Admin-only view check
+            if(currentUser.role === 'admin') {
+                renderReservationsView();
+            }
+            // Archive view is now for all users
+            renderArchiveView(); 
+        }
+        
+        function updateDashboard() {
+            const now = new Date();
+            let availableSpaceCount = 0;
+            spaceAvailabilityList.innerHTML = '';
+            eventSpaces.forEach(space => { 
+                const isOccupied = isSpaceOccupied(space.id, now);
+                availableSpaceCount += isOccupied ? 0 : 1;
+                const card = document.createElement('div'); 
+                card.className = `bg-slate-50 p-3 rounded-lg border border-slate-200 transition ${!isOccupied ? 'hover:border-sky-300 cursor-pointer' : 'opacity-60'}`;
+                card.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="flex h-2.5 w-2.5 relative mr-2">
+                            ${!isOccupied ? '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>' : ''}
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 ${isOccupied ? 'bg-red-500' : 'bg-green-500'}"></span>
+                        </span>
+                        <h4 class="font-semibold text-slate-800 text-sm">${space.name}</h4>
+                    </div>
+                    <p class="text-xs text-slate-500 ml-5">${isOccupied ? 'Booked' : 'Available'}</p>`; 
+                if (!isOccupied) {
+                    card.onclick = () => showReservationModal(space.id); 
+                }
+                spaceAvailabilityList.appendChild(card); 
+            });
+            statAvailableSpaces.textContent = availableSpaceCount;
+
+            // Filter out archived items from active count
+            // Note: Archived items are filtered by the 'archived' status in their respective arrays OR by checking the separate archive array.
+            const activeReservations = reservations.filter(r => r.status !== 'archived');
+            const activeEvents = eventSchedule.filter(e => e.status !== 'archived');
+
+            const totalActiveRequests = activeReservations.filter(r => r.status !== 'denied').length;
+            const myPending = activeReservations.filter(r => r.user === currentUser.username && (r.status !== 'approved' && r.status !== 'denied'));
+            const myApproved = activeEvents.filter(e => e.user === currentUser.username);
+            
+            if (currentUser.role === 'admin') {
+                pendingRequestsTitle.textContent = 'Total Active Requests';
+                statPendingRequests.textContent = totalActiveRequests;
+            } else {
+                pendingRequestsTitle.textContent = 'My Active Requests';
+                statPendingRequests.textContent = myPending.length;
+            }
+            statApprovedEvents.textContent = myApproved.length;
+            
+            myReservationsList.innerHTML = '';
+
+            const allMyReservations = [
+                // Only show active requests (not archived)
+                ...activeReservations.filter(r => r.user === currentUser.username), 
+                // Only show active approved events (not archived)
+                ...activeEvents.filter(e => e.user === currentUser.username).map(e => ({...e, status: 'approved', eventName: e.activityPurpose || e.eventName})) 
+            ];
+            
+            if (allMyReservations.length === 0) {
+                 myReservationsList.innerHTML = '<p class="text-slate-500 text-sm">You have no upcoming reservations or events.</p>';
+            } else {
+                allMyReservations.sort((a,b) => parseDate(a.startDate).getTime() - parseDate(b.startDate).getTime() || timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+                    .forEach(res => {
+                        const space = getEventSpaceById(res.spaceId);
+                        
+                        let statusText = res.status.charAt(0).toUpperCase() + res.status.slice(1);
+                        let statusColor = 'bg-red-100 text-red-800'; 
+                        
+                        if (res.status === 'pending') {
+                            statusColor = 'bg-yellow-100 text-yellow-800';
+                            statusText = 'Pending';
+                        } else if (res.status === 'concept-approved') {
+                            // This status covers both awaiting upload and awaiting final admin review
+                            statusColor = res.finalFormUploaded ? 'bg-indigo-100 text-indigo-800' : 'bg-sky-100 text-sky-800';
+                            statusText = 'Under Review'; 
+                        } else if (res.status === 'approved') {
+                            statusColor = 'bg-green-100 text-green-800';
+                            statusText = 'Approved'; 
+                        } else if (res.status === 'denied') {
+                            statusColor = 'bg-red-100 text-red-800';
+                            statusText = 'Denied'; 
+                        }
+
+                        const card = document.createElement('div');
+                        card.className = 'p-3 rounded-lg border border-slate-200 flex justify-between items-center cursor-pointer hover:bg-slate-50';
+                        card.innerHTML = `
+                            <div>
+                                <p class="font-semibold text-sm text-slate-700">${res.eventName || res.activityPurpose}</p>
+                                <p class="text-xs text-slate-500">${space.name} | ${res.startDate} @ ${res.startTime}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}">${statusText}</span>
+                            </div>
+                        `;
+                        // The entire card now triggers the detail modal
+                        card.addEventListener('click', () => showReservationDetails(res));
+                        myReservationsList.appendChild(card);
+                    });
+            }
+        }
+        
+        function renderFullCalendar() { 
+            
+            calendarDate.setDate(1); 
+            const year = calendarDate.getFullYear();
+            const month = calendarDate.getMonth();
+            
+            calendarMonthYear.textContent = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            const firstDayOfMonth = calendarDate.getDay(); 
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            calendarGridDays.innerHTML = '';
+            
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                calendarGridDays.innerHTML += `<div class="calendar-day-empty"></div>`;
+            }
+
+            const today = new Date();
+            const todayDate = today.getDate();
+            const todayMonth = today.getMonth();
+            const todayYear = today.getFullYear();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day';
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'calendar-day-number';
+                dayNumber.textContent = day;
+                
+                if (day === todayDate && month === todayMonth && year === todayYear) {
+                    dayCell.classList.add('calendar-day-today');
+                }
+                dayCell.appendChild(dayNumber);
+
+                // Get the date string for this specific cell (e.g., "2025-11-17")
+                const currentDayDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const currentDay = parseDate(currentDayDateStr).getTime();
+                const filterValue = calendarFilter.value;
+
+                eventSchedule.forEach(event => { // Only fully approved events shown on calendar
+                    if (event.status === 'archived') return; // Skip archived events
+
+                    const eventStart = parseDate(event.startDate).getTime();
+                    const eventEnd = parseDate(event.endDate).getTime();
+                    
+                    if (currentDay >= eventStart && currentDay <= eventEnd) {
+                        if (filterValue === 'all' || filterValue === event.spaceId) {
+                            const eventDiv = document.createElement('div');
+                            eventDiv.className = 'calendar-day-event';
+                            eventDiv.title = `${event.activityPurpose} (${getEventSpaceById(event.spaceId).name}) ${event.startTime}-${event.endTime}`;
+                            eventDiv.textContent = event.activityPurpose;
+                            
+                            // *** ADD EVENT LISTENER HERE ***
+                            eventDiv.dataset.eventId = event.id;
+                            eventDiv.addEventListener('click', (e) => {
+                                e.stopPropagation(); 
+                                const id = parseInt(e.target.dataset.eventId);
+                                const eventData = getApprovedEventById(id);
+                                if (eventData) {
+                                    showReservationDetails(eventData);
+                                } else {
+                                    showNotification('Error: Could not find event details.');
+                                }
+                            });
+                            // *** END ADD EVENT LISTENER ***
+
+                            dayCell.appendChild(eventDiv);
+                        }
+                    }
+                });
+                calendarGridDays.appendChild(dayCell);
+            }
+        }
+
+        // NEW: Render Facilities View (Catalog)
+        function renderFacilitiesView() {
+            const container = document.getElementById('facilities-list-container');
+            container.innerHTML = '';
+
+            eventSpaces.forEach(space => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-lg overflow-hidden border border-slate-100 flex flex-col transition hover:shadow-xl hover:border-sky-300'; 
+
+                const imageUrl = `https://placehold.co/400x200/f0f9ff/0ea5e9?text=${encodeURIComponent(space.name.replace(/\s/g, '+'))}`;
+
+                card.innerHTML = `
+                    <img src="${imageUrl}" alt="${space.name}" class="w-full h-40 object-cover">
+                    <div class="p-5 flex flex-col flex-grow">
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">${space.name}</h3>
+                        <p class="text-sm text-slate-600 mb-3 flex-grow">${space.description}</p>
+                        
+                        <div class="space-y-1 text-sm mb-4 pt-3 border-t border-slate-100">
+                            <p class="text-slate-700"><span class="font-semibold text-sky-600">Capacity:</span> ${space.capacity} pax</p>
+                            <p class="text-slate-700"><span class="font-semibold text-sky-600">Usual Activity:</span> ${space.usualActivity}</p>
+                        </div>
+
+                        <button data-space-id="${space.id}" class="reserve-facility-btn mt-auto w-full bg-sky-500 text-white py-2 rounded-lg font-semibold hover:bg-sky-600 transition">
+                            Reserve
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+            container.querySelectorAll('.reserve-facility-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const spaceId = e.target.dataset.spaceId;
+                    showReservationModal(spaceId); 
+                });
+            });
+        }
+        
+        // NEW: Render Reservations View (Admin Only) - REVISED COLORS/TEXT
+        function renderReservationsView() { 
+            stage1RequestsContainer.innerHTML = '';
+            stage2RequestsContainer.innerHTML = '';
+
+            // 1. Filter Requests (Exclude Denied and Archived)
+            const activeRequests = reservations.filter(r => r.status !== 'denied' && r.status !== 'archived');
+            const stage1Requests = activeRequests.filter(r => r.status === 'pending');
+            const stage2Requests = activeRequests.filter(r => r.status === 'concept-approved' && r.finalFormUploaded);
+            
+            // Other requests for a less prominent list (Denied / Awaiting Upload)
+            const otherRequests = reservations.filter(r => 
+                (r.status === 'denied' || (r.status === 'concept-approved' && !r.finalFormUploaded)) && r.status !== 'archived'
+            ).sort((a,b) => parseDate(b.dateFiled).getTime() - parseDate(a.dateFiled).getTime()); 
+
+            // --- Render Stage 1 Requests (Concept Pending) ---
+            if (stage1Requests.length === 0) { 
+                stage1RequestsContainer.innerHTML = '<p class="text-slate-500">There are no *pending* requests for Stage 1 (Concept Paper Approval).</p>'; 
+            } else {
+                stage1Requests.forEach(res => { 
+                    const space = getEventSpaceById(res.spaceId);
+                    const statusText = 'Stage 1: Concept Pending';
+                    const statusColor = 'text-sky-800 bg-sky-100'; // ALIGNED COLOR
+
+                    const card = document.createElement('div'); 
+                    // Changed border color to match sky theme for stage 1
+                    card.className = 'reservation-card-admin bg-white p-4 rounded-xl border border-sky-200 flex justify-between items-center hover:shadow-lg'; 
+                    card.dataset.id = res.id;
+
+                    card.innerHTML = `
+                        <div>
+                            <p class="font-bold text-slate-800">${res.activityPurpose} - <span class="font-normal text-sky-600">${space.name}</span></p>
+                            <p class="text-sm text-slate-600">${res.startDate} @ ${res.startTime} by ${res.user} (${res.department})</p>
+                        </div>
+                        <div class="text-sm font-medium ${statusColor} px-3 py-1 rounded-full whitespace-nowrap">
+                            ${statusText}
+                        </div>
+                    `; 
+                    card.addEventListener('click', () => showReservationDetails(res));
+                    stage1RequestsContainer.appendChild(card); 
+                }); 
+            }
+            
+            // --- Render Stage 2 Requests (Form Submitted) ---
+            if (stage2Requests.length === 0) { 
+                stage2RequestsContainer.innerHTML = '<p class="text-slate-500">There are no *forms* uploaded for Stage 2 (Final Form Approval).</p>'; 
+            } else {
+                stage2Requests.forEach(res => { 
+                    const space = getEventSpaceById(res.spaceId);
+                    const statusText = 'Stage 2: Form Submitted';
+                    const statusColor = 'text-indigo-800 bg-indigo-100'; // ALIGNED COLOR
+
+                    const card = document.createElement('div'); 
+                    // Changed border color to match indigo theme for stage 2
+                    card.className = 'reservation-card-admin bg-white p-4 rounded-xl border border-indigo-200 flex justify-between items-center hover:shadow-lg'; 
+                    card.dataset.id = res.id;
+
+                    card.innerHTML = `
+                        <div>
+                            <p class="font-bold text-slate-800">${res.activityPurpose} - <span class="font-normal text-sky-600">${space.name}</span></p>
+                            <p class="text-sm text-slate-600">${res.startDate} @ ${res.startTime} by ${res.user} (${res.department})</p>
+                        </div>
+                        <div class="text-sm font-medium ${statusColor} px-3 py-1 rounded-full whitespace-nowrap">
+                            ${statusText}
+                        </div>
+                    `; 
+                    card.addEventListener('click', () => showReservationDetails(res));
+                    stage2RequestsContainer.appendChild(card); 
+                }); 
+            }
+
+            // --- Render Other Requests (Denied / Awaiting Upload) ---
+            const existingOtherRequests = document.getElementById('other-requests-container');
+            if (existingOtherRequests) {
+                existingOtherRequests.remove();
+            }
+
+            if (otherRequests.length > 0) {
+                const otherRequestsDiv = document.createElement('div');
+                otherRequestsDiv.id = 'other-requests-container';
+                otherRequestsDiv.className = 'mt-6 pt-4 border-t border-slate-300';
+                
+                let otherRequestsHtml = `
+                    <h3 class="text-xl font-semibold text-slate-600 mb-4">Other Requests (Awaiting Upload / Denied)</h3>
+                    <div class="space-y-3">
+                `;
+                otherRequests.forEach(res => {
+                    const space = getEventSpaceById(res.spaceId);
+                    let statusText = res.status === 'denied' ? 'Denied' : 'Under Review (Awaiting Form)';
+                    let statusColor = res.status === 'denied' ? 'text-red-800 bg-red-100' : 'text-sky-800 bg-sky-100';
+
+                    otherRequestsHtml += `
+                        <div class="reservation-card-admin bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center opacity-75 cursor-pointer hover:bg-slate-50">
+                            <div>
+                                <p class="font-semibold text-slate-700">${res.activityPurpose} - ${space.name}</p>
+                                <p class="text-xs text-slate-500">${res.startDate} @ ${res.startTime}</p>
+                            </div>
+                            <div class="text-xs font-medium ${statusColor} px-3 py-1 rounded-full whitespace-nowrap">
+                                ${statusText}
+                            </div>
+                        </div>
+                    `;
+                    // Attach click listener manually to the card once created
+                });
+                otherRequestsHtml += `</div>`;
+                otherRequestsDiv.innerHTML = otherRequestsHtml;
+                document.getElementById('reservations-view').appendChild(otherRequestsDiv);
+                
+                otherRequestsDiv.querySelectorAll('.reservation-card-admin').forEach((card, index) => {
+                    const res = otherRequests[index]; 
+                    card.addEventListener('click', () => showReservationDetails(res));
+                });
+            }
+
+        }
+
+        // NEW: Render Archive View (User & Admin)
+        function renderArchiveView() {
+            archiveListContainer.innerHTML = '';
+            
+            const isAdmin = currentUser.role === 'admin';
+            
+            // Filter archive based on role
+            let itemsToDisplay = archive;
+            if (!isAdmin) {
+                // Users only see their own archived items
+                itemsToDisplay = archive.filter(item => item.user === currentUser.username);
+                archiveDescription.textContent = 'This list includes all requests and events you have manually archived.';
+            } else {
+                archiveDescription.textContent = 'This list includes all permanently approved, denied, or manually archived requests (Admin view).';
+            }
+
+
+            if (itemsToDisplay.length === 0) {
+                archiveListContainer.innerHTML = '<p class="text-slate-500">The archive is currently empty.</p>';
+                return;
+            }
+
+            // Sort by archived date descending
+            itemsToDisplay.sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt)).forEach(item => {
+                const space = getEventSpaceById(item.spaceId);
+                const isDenied = item.status === 'denied';
+                const typeText = isDenied ? 'Denied Request' : (item.type === 'event' ? 'Confirmed Event' : 'Archived Request');
+                const statusColor = isDenied ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800';
+
+                const card = document.createElement('div'); 
+                card.className = 'bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center hover:shadow-md cursor-pointer'; 
+                
+                card.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-800">${item.activityPurpose} - <span class="font-normal text-sky-600">${space.name}</span></p>
+                        <p class="text-sm text-slate-600">Filed by ${item.user} | ${item.startDate} @ ${item.startTime}</p>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="text-xs font-medium ${statusColor} px-3 py-1 rounded-full whitespace-nowrap">${typeText}</span>
+                        <span class="text-xs text-slate-400">Archived: ${item.archivedAt}</span>
+                    </div>
+                `; 
+                card.addEventListener('click', () => showReservationDetails(item));
+                archiveListContainer.appendChild(card);
+            });
+        }
+        
+        // NEW: Show Reservation Details Modal
+        function showReservationDetails(reservation) {
+            // Check if the reservation is currently in the archive or active lists
+            currentReservation = reservation;
+
+            const isApprovedEvent = getApprovedEventById(reservation.id) !== undefined && reservation.status !== 'archived';
+            const isRequest = getRequestById(reservation.id) !== undefined && reservation.status !== 'archived';
+
+            const space = getEventSpaceById(reservation.spaceId);
+            
+            // Reset state
+            detailModalEdit.classList.add('hidden');
+            detailModalArchive.classList.add('hidden');
+            detailModalDelete.classList.add('hidden');
+            printRequestInfoBtn.classList.add('hidden');
+            denyReasonContainer.classList.add('hidden');
+            detailDenialReasonContainer.classList.add('hidden'); // Hide student denial reason
+            
+            // Reset Edit button text
+            detailModalEdit.textContent = 'Edit Details';
+            
+            // --- Stage 1 Panel Update (Reset content) ---
+            document.getElementById('stage-1-status-panel').innerHTML = `<p class="text-sm text-slate-500">Document Uploaded Successfully.</p>`;
+            
+            // --- Stage 2 Panel Update (Reset content) ---
+            document.querySelector('#stage-2-status-panel').innerHTML = `
+                <p id="stage-2-message" class="text-base font-medium text-slate-700 mb-4"></p>
+                <button id="upload-stage-2-btn" class="text-sm bg-sky-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-sky-600 transition hidden">Upload Signed Form (PDF)</button>
+            `;
+            // Re-grab dynamically created elements
+            const downloadStage2FormEl = document.getElementById('download-stage-2-form'); 
+            
+            // Set basic details
+            let displayStatus = reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1);
+            let statusColorClass = 'text-yellow-600';
+
+            // Determine display status and action button visibility
+            const isPending = reservation.status === 'pending';
+            const isConceptApproved = reservation.status === 'concept-approved';
+            const isFormUploaded = reservation.finalFormUploaded;
+            const isApproved = reservation.status === 'approved';
+            const isDenied = reservation.status === 'denied';
+            const isArchived = reservation.status === 'archived';
+            
+            const isOwner = reservation.user === currentUser.username;
+            const isAdmin = currentUser.role === 'admin';
+
+            if (isPending) {
+                displayStatus = 'Pending';
+                statusColorClass = 'text-yellow-600';
+                if (isOwner) detailModalEdit.classList.remove('hidden'); 
+            } else if (isConceptApproved) {
+                displayStatus = 'Under Review';
+                statusColorClass = isFormUploaded ? 'text-indigo-600' : 'text-sky-600';
+                if (isOwner && !isFormUploaded) detailModalEdit.classList.remove('hidden'); 
+                printRequestInfoBtn.textContent = 'Print Form for Signature';
+                printRequestInfoBtn.classList.remove('hidden');
+            } else if (isApproved) {
+                displayStatus = 'Approved';
+                statusColorClass = 'text-green-600';
+                printRequestInfoBtn.textContent = 'Print Confirmed Form';
+                printRequestInfoBtn.classList.remove('hidden');
+            } else if (isDenied) {
+                displayStatus = 'Denied';
+                statusColorClass = 'text-red-600';
+                detailDenialReasonContainer.classList.remove('hidden'); // Show denial reason to student/user
+                
+                // *** RESUBMIT LOGIC: Show edit button and change text to resubmit ***
+                if (isOwner && !isArchived) { // User can edit/resubmit if they own it and it's not archived
+                    detailModalEdit.classList.remove('hidden');
+                    detailModalEdit.textContent = 'Edit & Resubmit'; 
+                }
+            } else if (isArchived) {
+                displayStatus = 'Archived';
+                statusColorClass = 'text-slate-600';
+                // If archived and denied, still show the denial reason
+                if (reservation.denialReason) {
+                    detailDenialReasonContainer.classList.remove('hidden');
+                }
+            }
+            
+            // --- ARCHIVE / DELETE CONTROLS ---
+            
+            // Archive Logic: Visible if Admin OR if User owns item and status is final/reviewed (Approved, Denied, Concept Approved)
+            if (!isArchived) {
+                // Modified condition to be more inclusive for users
+                const userCanArchive = isOwner && (isApproved || isDenied || isConceptApproved);
+                
+                if (isAdmin || userCanArchive) {
+                     detailModalArchive.classList.remove('hidden');
+                }
+
+                // Delete Logic: Visible if Admin OR if User owns PENDING/DENIED request
+                if (isAdmin || (isOwner && (isPending || isDenied))) {
+                    detailModalDelete.classList.remove('hidden');
+                }
+            } else {
+                // If archived, only Admin sees the delete button (to permanently remove it)
+                if (isAdmin) {
+                    detailModalDelete.classList.remove('hidden');
+                }
+            }
+
+
+            document.getElementById('detail-status').textContent = displayStatus;
+            document.getElementById('detail-status').className = statusColorClass;
+            
+            document.getElementById('detail-purpose').textContent = reservation.activityPurpose;
+            document.getElementById('detail-venue').textContent = space.name;
+            document.getElementById('detail-date-time').textContent = `${reservation.startDate} (${reservation.startTime} - ${reservation.endTime})`;
+            document.getElementById('detail-requestor').textContent = `${reservation.user} (${reservation.department})`;
+            document.getElementById('detail-date-filed').textContent = reservation.dateFiled;
+            document.getElementById('detail-pic').textContent = reservation.personInCharge;
+            document.getElementById('detail-contact').textContent = reservation.contactNumber;
+            
+            let participants = reservation.participantType;
+            if (reservation.participantType === 'Others' && reservation.participantOther) {
+                participants = `Others: ${reservation.participantOther}`;
+            }
+            document.getElementById('detail-attendees').textContent = `${reservation.attendees} (${participants})`;
+            document.getElementById('detail-classification').textContent = `${reservation.classification} / ${reservation.division}`;
+            
+            // Document Link (Mocked URL)
+            const mockPdfUrl = 'https://placehold.co/100x100/38bdf8/ffffff?text=Concept+Paper+PDF';
+            document.getElementById('detail-pdf-name').textContent = reservation.conceptPaperFilename;
+            document.getElementById('detail-pdf-link').href = mockPdfUrl; 
+            
+            // Equipment List (omitted for brevity)
+            const eqList = document.getElementById('detail-equipment-list');
+            eqList.innerHTML = '';
+            let equipmentFound = false;
+            equipmentList.forEach(item => {
+                const val = reservation.equipment[item.id];
+                if (val && (typeof val === 'boolean' || val > 0)) {
+                    const li = document.createElement('li');
+                    li.textContent = `${item.label} (${typeof val === 'boolean' ? '✓' : val})`;
+                    eqList.appendChild(li);
+                    equipmentFound = true;
+                }
+            });
+            if(!equipmentFound) {
+                eqList.innerHTML = '<li class="text-slate-500">No special equipment requested.</li>';
+            }
+            
+            // Denial Reason content
+            if (reservation.denialReason) {
+                detailDenialReason.textContent = reservation.denialReason;
+            } else if (isDenied || isArchived) {
+                 detailDenialReason.textContent = 'No reason provided by Admin.';
+            }
+
+            // STAGE 2 Panel Status - APPLYING UNIFORM UI
+            const panel = document.getElementById('stage-2-status-panel');
+            const uploadStage2Btn = document.getElementById('upload-stage-2-btn');
+            
+            detailFormNameContainer.classList.add('hidden');
+            downloadStage2FormEl.classList.add('hidden'); // Hide the download button initially
+            
+            // Reset panel background to default
+            panel.classList.remove('bg-indigo-50', 'border-indigo-400', 'bg-sky-50', 'border-sky-400', 'bg-yellow-50', 'border-yellow-300', 'bg-green-50', 'border-green-400', 'bg-red-50', 'border-red-400', 'bg-slate-50', 'border-slate-300');
+            panel.classList.add('bg-slate-100', 'border-slate-300');
+            uploadStage2Btn.classList.add('hidden'); // Hide upload button in stage 2 panel initially
+
+            if (isConceptApproved || isApproved) {
+                if (isFormUploaded) {
+                    // --- UPLOADED/APPROVED ---
+                    panel.innerHTML = `<p class="text-sm text-slate-500">Document Uploaded Successfully.</p>`; 
+                    downloadStage2FormEl.classList.remove('hidden'); 
+                    detailFormName.textContent = reservation.finalFormFilename;
+                    detailFormNameContainer.classList.remove('hidden');
+                    downloadStage2FormEl.href = 'https://placehold.co/100x100/4f46e5/ffffff?text=Signed+Form+PDF'; 
+                    panel.classList.remove('bg-slate-100', 'border-slate-300');
+                    panel.classList.add('bg-indigo-50', 'border-indigo-400');
+                } else if (isConceptApproved) {
+                    // --- PENDING UPLOAD UI ---
+                    panel.innerHTML = `
+                        <p id="stage-2-message" class="text-base font-medium text-slate-700 mb-4">Concept approved! Please print the form, get required signatures, and upload the signed PDF.</p>
+                        <button id="upload-stage-2-btn" class="text-sm bg-sky-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-sky-600 transition">Upload Signed Form (PDF)</button>
+                    `;
+                    // Re-grab the dynamically added button
+                    document.getElementById('upload-stage-2-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        document.getElementById('stage-2-form-upload').click(); 
+                    });
+                    panel.classList.remove('bg-slate-100', 'border-slate-300');
+                    panel.classList.add('bg-sky-50', 'border-sky-400'); 
+                }
+            } else if (isPending) {
+                // --- PENDING STAGE 1 UI ---
+                panel.innerHTML = `<p id="stage-2-message" class="text-base font-medium text-slate-700 mb-4">Awaiting EMC approval of the Concept Paper (Stage 1).</p>`;
+                panel.classList.remove('bg-slate-100', 'border-slate-300');
+                panel.classList.add('bg-yellow-50', 'border-yellow-300');
+            } else if (isDenied) { 
+                // --- DENIED UI ---
+                panel.innerHTML = `<p id="stage-2-message" class="text-base font-medium text-slate-700 mb-4">Request denied at an earlier stage.</p>`;
+                panel.classList.remove('bg-slate-100', 'border-slate-300');
+                panel.classList.add('bg-red-50', 'border-red-400');
+            } else if (isArchived) {
+                 // --- ARCHIVED UI ---
+                panel.innerHTML = `<p id="stage-2-message" class="text-base font-medium text-slate-700 mb-4">This request/event is archived and no further action is required.</p>`;
+                panel.classList.remove('bg-slate-100', 'border-slate-300');
+                panel.classList.add('bg-slate-50', 'border-slate-300');
+            }
+            
+            // --- ADMIN ACTION BUTTON VISIBILITY (Bottom Panel) ---
+            const actionPanel = document.getElementById('detail-action-panel');
+            stage1Actions.classList.add('hidden');
+            stage2Actions.classList.add('hidden');
+            actionPanel.classList.add('hidden'); // Hide by default
+
+            // Show admin panel only if admin AND status is NOT final (not approved, denied, or archived)
+            const isFinalStatus = isApproved || isDenied || isArchived;
+            if (isAdmin && !isFinalStatus) {
+                actionPanel.classList.remove('hidden');
+                if (isPending) {
+                    stage1Actions.classList.remove('hidden');
+                    stage1ApproveBtn.disabled = false;
+                    stage1DenyBtn.disabled = false;
+                } else if (isConceptApproved) {
+                    stage2Actions.classList.remove('hidden');
+                    // Stage 2 approve/deny is only enabled if the user has uploaded the final form
+                    stage2ApproveBtn.disabled = !isFormUploaded; 
+                    stage2DenyBtn.disabled = false;
+                }
+            }
+
+            showModal(reservationDetailModal);
+        }
+
+        // Action: Archive Event/Request
+        function archiveEvent(reservation) {
+             // Determine the source array
+            const isApprovedEvent = reservation.status === 'approved';
+            
+            let index = -1;
+            let sourceArray = [];
+            
+            if (isApprovedEvent) {
+                sourceArray = eventSchedule;
+                index = eventSchedule.findIndex(r => r.id === reservation.id);
+            } else {
+                sourceArray = reservations;
+                index = reservations.findIndex(r => r.id === reservation.id);
+            }
+
+            const itemType = isApprovedEvent ? 'Event' : 'Request';
+
+            if (index > -1) {
+                const [itemToArchive] = sourceArray.splice(index, 1);
+                
+                // Add metadata for archive view
+                itemToArchive.status = itemToArchive.status; // Keep original status
+                itemToArchive.type = isApprovedEvent ? 'event' : 'request';
+                itemToArchive.archivedAt = new Date().toISOString().split('T')[0];
+                
+                archive.push(itemToArchive);
+                
+                showNotification(`${itemType} for "${itemToArchive.activityPurpose}" has been moved to the Archive.`); 
+            } else {
+                // If it wasn't in reservations or eventSchedule, check if it's already in archive.
+                if (archive.find(a => a.id === reservation.id)) {
+                    showNotification(`${itemType} is already archived.`);
+                } else {
+                    showNotification(`Error: Could not find ${itemType} in active lists.`);
+                }
+            }
+            
+            hideModal(reservationDetailModal);
+            updateAllViews();
+        }
+        
+        // Action: Delete Event/Request
+        function deleteEvent(reservation) {
+            const isApprovedEvent = reservation.status === 'approved';
+            const isArchived = reservation.status === 'archived';
+
+            // 1. Check active lists first
+            let sourceArray = isApprovedEvent ? eventSchedule : reservations;
+            let itemType = isApprovedEvent ? 'Event' : 'Request';
+            let index = sourceArray.findIndex(r => r.id === reservation.id);
+            
+            // 2. If not found in active, check the archive array
+            if (index === -1 && isArchived) {
+                sourceArray = archive;
+                itemType = 'Archived Item';
+                index = sourceArray.findIndex(r => r.id === reservation.id);
+            }
+
+            if (index > -1) {
+                sourceArray.splice(index, 1);
+                showNotification(`${itemType} for "${reservation.activityPurpose}" has been permanently deleted.`); 
+            } else {
+                showNotification(`Error: Could not find item for permanent deletion.`);
+            }
+            
+            hideModal(reservationDetailModal);
+            updateAllViews();
+        }
+
+        // Action: Stage 1 Approval (Concept Approved)
+        function approveConceptPaper(reservation) {
+            if (!reservation) return;
+
+            if (!isDateRangeAvailable(reservation.spaceId, reservation.startDate, reservation.startTime, reservation.endTime, reservation.id)) {
+                showNotification('Error: Reservation conflict detected. A space was booked during this time.');
+                hideModal(reservationDetailModal);
+                updateAllViews();
+                return;
+            }
+
+            const index = reservations.findIndex(r => r.id === reservation.id);
+            if (index > -1) {
+                reservations[index].status = 'concept-approved'; 
+                reservations[index].finalFormUploaded = false; 
+                currentReservation = reservations[index]; 
+            }
+            
+            showNotification(`Concept Paper approved (Stage 1)! The user can now print the Facility Form.`); 
+            
+            showReservationDetails(currentReservation);
+            updateAllViews();
+        }
+
+        // Action: Stage 2 Approval (Final Approved)
+        function approveFinalReservation(reservation) {
+            if (!reservation || !reservation.finalFormUploaded) return;
+
+            if (!isDateRangeAvailable(reservation.spaceId, reservation.startDate, reservation.startTime, reservation.endTime, reservation.id)) {
+                showNotification('Error: Reservation conflict detected. A space was booked during this time.');
+                hideModal(reservationDetailModal);
+                updateAllViews();
+                return;
+            }
+
+            const index = reservations.findIndex(r => r.id === reservation.id);
+            if (index > -1) {
+                const [resToApprove] = reservations.splice(index, 1);
+            
+                const approvedEvent = { 
+                    ...resToApprove, 
+                    id: Date.now(), 
+                    status: 'approved',
+                    eventName: resToApprove.activityPurpose,
+                    user: resToApprove.user, 
+                    department: resToApprove.department 
+                };
+                eventSchedule.push(approvedEvent); 
+            }
+            
+            showNotification(`Final Reservation for ${getEventSpaceById(reservation.spaceId).name} approved! Event is confirmed.`); 
+            
+            hideModal(reservationDetailModal);
+            updateAllViews();
+        }
+
+        // Action: Deny Reservation (Handles Stage 1 and Stage 2 denials)
+        function denyReservation(reason, reservationId) {
+            const res = reservations.find(r => r.id === reservationId);
+            if (!res) return;
+
+            const index = reservations.findIndex(r => r.id === reservationId);
+            if (index > -1) {
+                reservations[index].status = 'denied';
+                reservations[index].denialReason = reason;
+                reservations[index].finalFormUploaded = false;
+                reservations[index].conceptPaperFilename = res.conceptPaperFilename; 
+            }
+            
+            showNotification(`Reservation denied. Reason recorded.`); 
+            
+            hideModal(reservationDetailModal);
+            updateAllViews();
+        }
+
+        
+        function populateEquipmentGrid(equipmentData = {}) {
+            equipmentGrid.innerHTML = '';
+            equipmentList.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-slate-50';
+                
+                let inputHTML = '';
+                const isChecked = !!equipmentData[item.id];
+                const qtyValue = (typeof equipmentData[item.id] === 'number') ? equipmentData[item.id] : '';
+                
+                if (item.type === 'number') {
+                    inputHTML = `<input type="number" id="${item.id}" min="0" value="${qtyValue}" class="w-20 px-2 py-1 border border-slate-300 rounded-md shadow-sm ${isChecked ? '' : 'hidden'}" placeholder="Qty">`;
+                }
+                
+                div.innerHTML = `
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" data-qty-id="${item.id}" class="eq-checkbox" ${isChecked ? 'checked' : ''}> ${item.label}
+                    </label>
+                    ${inputHTML}
+                `;
+                equipmentGrid.appendChild(div);
+            });
+        }
+
+        function showReservationModal(spaceId = null, reservationToEdit = null) { 
+            reservationForm.reset();
+            showDefaultState();
+            
+            // Set reservation ID for edit mode
+            reservationForm.dataset.reservationId = reservationToEdit ? reservationToEdit.id : '';
+            submitReservationBtn.textContent = reservationToEdit ? 'Update Reservation' : 'Request Reservation';
+            reservationModal.querySelector('#modal-title').textContent = reservationToEdit ? 'Edit Event Reservation' : 'Request an Event Space';
+
+            // Populate spaces select
+            const spaceSelect = reservationModal.querySelector('#space-id');
+            spaceSelect.innerHTML = '';
+            eventSpaces.forEach(s => {
+                spaceSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            });
+
+            // Set default/pre-filled values
+            if (reservationToEdit) {
+                document.getElementById('event-name').value = reservationToEdit.activityPurpose;
+                document.getElementById('person-in-charge').value = reservationToEdit.personInCharge;
+                document.getElementById('contact-number').value = reservationToEdit.contactNumber;
+                document.getElementById('division').value = reservationToEdit.division;
+                document.getElementById('attendees').value = reservationToEdit.attendees;
+                document.getElementById('classification').value = reservationToEdit.classification;
+                
+                spaceSelect.value = reservationToEdit.spaceId;
+                document.getElementById('date-needed').value = reservationToEdit.startDate;
+                document.getElementById('start-time').value = reservationToEdit.startTime;
+                document.getElementById('end-time').value = reservationToEdit.endTime;
+                
+                // Participant type
+                const radio = reservationForm.querySelector(`input[name="participant-type"][value="${reservationToEdit.participantType}"]`);
+                if (radio) {
+                    radio.checked = true;
+                    if (reservationToEdit.participantType === 'Others') {
+                        participantOtherInput.classList.remove('hidden');
+                        participantOtherInput.value = reservationToEdit.participantOther || '';
+                    } else {
+                        participantOtherInput.classList.add('hidden');
+                        participantOtherInput.value = '';
+                    }
+                }
+
+                // Equipment
+                populateEquipmentGrid(reservationToEdit.equipment);
+                
+                // Concept Paper: In edit mode, we show the current file and allow replacement
+                dropArea.classList.remove('border-slate-300', 'hover:border-sky-500', 'hover:bg-sky-50', 'cursor-pointer');
+                dropArea.classList.add('border-green-500', 'bg-green-50', 'cursor-default');
+                defaultState.classList.add('hidden');
+                successState.classList.remove('hidden');
+                fileNameDisplay.textContent = reservationToEdit.conceptPaperFilename;
+                conceptPaperCurrentFile.classList.remove('hidden');
+                conceptPaperCurrentFile.querySelector('span').textContent = reservationToEdit.conceptPaperFilename;
+
+            } else {
+                // New Reservation defaults
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('date-needed').value = today;
+                if (spaceId) {
+                    spaceSelect.value = spaceId;
+                    reservationModal.querySelector('#modal-title').textContent = `Reserve ${getEventSpaceById(spaceId).name}`;
+                }
+                
+                // Default participant type to Student
+                const defaultRadio = reservationForm.querySelector('input[name="participant-type"][value="Student"]');
+                if (defaultRadio) defaultRadio.checked = true;
+                
+                populateEquipmentGrid({}); // Empty equipment for new reservation
+            }
+            
+            showModal(reservationModal); 
+        }
+        
+        /**
+         * Sends the user prompt and application context to the Gemini API 
+         * and updates the AI chat modal with the response.
+         */
+        async function processAiPrompt(prompt) { 
+            // 1. Add user message
+            appendMessage(prompt, 'user'); 
+            aiPromptInput.value = ''; 
+            
+            // 2. Add temporary loading bubble
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'ai-bubble response-bubble ai-loading-bubble';
+            loadingBubble.innerHTML = 'Thinking...'; 
+            aiResponseContainer.appendChild(loadingBubble);
+            aiResponseContainer.scrollTop = aiResponseContainer.scrollHeight; 
+
+            // 3. Prepare contextual data for the LLM
+            // Filter only necessary event data (Approved Events)
+            const availableEvents = eventSchedule.map(e => ({
+                id: e.id,
+                spaceId: e.spaceId,
+                activity: e.activityPurpose,
+                date: e.startDate,
+                startTime: e.startTime,
+                endTime: e.endTime
+            }));
+
+            const modelContext = {
+                facilities: eventSpaces,
+                approved_schedule: availableEvents,
+            };
+
+            const userQuery = `
+                The current date/time is ${new Date().toISOString()}.
+                Here is the current application state for facilities and approved events:
+                ${JSON.stringify(modelContext, null, 2)}
+                
+                The user asks: ${prompt}
+            `;
+
+            const apiUrl = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] }
+            };
+
+            let responseText = "I'm sorry, I encountered an error while processing your request. Please check the console for details or try again.";
+            const maxRetries = 3;
+            
+            // 4. Implement API Call with Exponential Backoff
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        responseText = result.candidates?.[0]?.content?.parts?.[0]?.text || responseText;
+                        break; // Success, exit retry loop
+                    } else if (response.status === 429 && i < maxRetries - 1) {
+                        // Too Many Requests, wait and retry
+                        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+                    }
+                } catch (error) {
+                    console.error(`Attempt ${i + 1} failed:`, error);
+                    // If it's the last attempt, set a final error message
+                    if (i === maxRetries - 1) {
+                         responseText = `Error connecting to the AI: ${error.message}. Please verify your API key and connection.`;
+                    }
+                }
+            }
+
+            // 5. Remove loading bubble and append final response
+            loadingBubble.remove();
+            appendMessage(responseText, 'ai');
+        }
+
+        function switchView(viewName) {
+            navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewName));
+            Object.values(views).forEach(v => v.classList.toggle('hidden', v.dataset.view !== viewName));
+        }
+
+        function setupUIForRole() {
+            const isAdmin = currentUser.role === 'admin';
+            adminNavSection.style.display = isAdmin ? 'block' : 'none'; // Only Admin sees the "Requests" menu
+            
+            const avatarUrl = isAdmin ? 'https://placehold.co/100x100/0ea5e9/ffffff?text=A' : `https://placehold.co/100x100/64748b/ffffff?text=${currentUser.username.charAt(0).toUpperCase()}`;
+            sidebarAvatar.src = avatarUrl;
+            headerAvatar.style.backgroundImage = `url(${avatarUrl})`;
+            sidebarUsername.textContent = currentUser.username;
+            dashboardTitle.textContent = isAdmin ? 'Welcome, Admin' : `Welcome, ${currentUser.username} (${currentUser.department})`;
+            
+            // Re-render based on current view in case user switched roles (e.g. login as admin, then switch to user)
+            const activeView = document.querySelector('.nav-button.active').dataset.view;
+            if (activeView === 'reservations' && !isAdmin) {
+                switchView('dashboard');
+            }
+            
+            // Populate calendar filter
+            calendarFilter.innerHTML = '<option value="all">All Spaces</option>';
+            eventSpaces.forEach(space => {
+                calendarFilter.innerHTML += `<option value="${space.id}">${space.name}</option>`;
+            });
+        }
+        
+        function stopApp() {
+            intervals.forEach(clearInterval);
+            intervals = [];
+        }
+
+        function startApp() {
+            stopApp(); 
+            setupUIForRole();
+            updateAllViews();
+            updateDateTime();
+            populateEquipmentGrid();
+            intervals.push(setInterval(updateDateTime, 1000));
+            intervals.push(setInterval(updateAllViews, 60000));
+        }
+
+        // --- EVENT LISTENERS ---
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginError.textContent = '';
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const user = Object.values(users).find(u => u.username === username && u.password === password);
+            if (user) {
+                currentUser = user;
+                loginPage.style.display = 'none';
+                appContainer.style.display = 'grid';
+                startApp();
+            } else {
+                loginError.textContent = 'Invalid username or password.';
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            stopApp();
+            currentUser = null;
+            loginPage.style.display = 'flex';
+            appContainer.style.display = 'none';
+            loginForm.reset();
+            loginError.textContent = '';
+        });
+
+        navButtons.forEach(button => { 
+            button.addEventListener('click', () => { 
+                const view = button.dataset.view; 
+                // Only restrict Admin views
+                if(view === 'reservations' && currentUser.role !== 'admin') return; 
+                switchView(view); 
+            }); 
+        });
+        
+        aiModalBtn.addEventListener('click', () => showModal(aiModal));
+        aiModalClose.addEventListener('click', () => hideModal(aiModal));
+        aiSubmitBtn.addEventListener('click', () => { if(aiPromptInput.value.trim()) processAiPrompt(aiPromptInput.value.trim()); });
+        aiPromptInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && aiPromptInput.value.trim()) processAiPrompt(aiPromptInput.value.trim()); });
+        cancelReservationBtn.addEventListener('click', () => hideModal(reservationModal));
+        notificationOkBtn.addEventListener('click', () => hideModal(notificationModal));
+        
+        // Calendar Listeners
+        calendarPrevBtn.addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() - 1);
+            renderFullCalendar();
+        });
+        calendarNextBtn.addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() + 1);
+            renderFullCalendar();
+        });
+        calendarFilter.addEventListener('change', () => {
+            renderFullCalendar();
+        });
+
+        // Equipment Form Listener
+        equipmentGrid.addEventListener('change', (e) => {
+            if (e.target.classList.contains('eq-checkbox')) {
+                const qtyInput = document.getElementById(e.target.dataset.qtyId);
+                if (qtyInput) {
+                    qtyInput.classList.toggle('hidden', !e.target.checked);
+                    if (!e.target.checked) {
+                        qtyInput.value = ''; // Clear qty if unchecked
+                    }
+                }
+            }
+        });
+        
+        // Participant Type Radio Listener
+        participantTypeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'Others') {
+                    participantOtherInput.classList.remove('hidden');
+                    participantOtherInput.setAttribute('required', 'required');
+                } else {
+                    participantOtherInput.classList.add('hidden');
+                    participantOtherInput.removeAttribute('required');
+                    participantOtherInput.value = '';
+                }
+            });
+        });
+
+        // Upload Listeners (Stage 1: Concept Paper)
+        conceptPaperUpload.addEventListener('change', function() {
+            if (conceptPaperUpload.files.length > 0) {
+                showSuccessState(conceptPaperUpload.files[0].name);
+            } else {
+                showDefaultState();
+            }
+        });
+        removeConceptPaperBtn.addEventListener('click', showDefaultState);
+        
+        // Reservation Form Submission (Initial Request OR Update)
+        reservationForm.addEventListener('submit', (e) => { 
+            e.preventDefault(); 
+            
+            const isEditing = !!reservationForm.dataset.reservationId;
+            const reservationId = isEditing ? parseInt(reservationForm.dataset.reservationId) : Date.now();
+            
+            const dateNeeded = document.getElementById('date-needed').value;
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+            const participantTypeRadio = document.querySelector('input[name="participant-type"]:checked');
+
+            // --- VALIDATIONS ---
+            const isNewFileUploaded = conceptPaperUpload.files.length > 0;
+            // When editing, retrieve concept paper filename from the item in any list (reservations, eventSchedule, archive)
+            const currentItem = getRequestById(reservationId) || getApprovedEventById(reservationId) || archive.find(a => a.id === reservationId);
+            let conceptFileName = isEditing ? currentItem?.conceptPaperFilename : null;
+
+            // CLIENT-SIDE JS VALIDATION FOR FILE PRESENCE (Replaces HTML 'required')
+            if (!isEditing && !isNewFileUploaded) {
+                 showNotification('Error: Please upload the signed Concept Paper (PDF only) to proceed.'); 
+                 return;
+            } else if (isEditing && !isNewFileUploaded && !conceptFileName) {
+                 // Should only happen if the user deleted the original file *and* didn't upload a new one during edit
+                 showNotification('Error: A Concept Paper PDF is required for this reservation.'); 
+                 return;
+            } else if (isNewFileUploaded && conceptPaperUpload.files[0].type !== 'application/pdf') {
+                showNotification('Error: Only PDF format allowed for the Concept Paper.'); 
+                return;
+            } else if (isNewFileUploaded) {
+                conceptFileName = conceptPaperUpload.files[0].name;
+            }
+            
+            if (new Date(`${dateNeeded}T${startTime}`) >= new Date(`${dateNeeded}T${endTime}`)) { 
+                showNotification('Error: Start time must be earlier than end time on the date needed.'); return; 
+            } 
+
+            if (!isDateRangeAvailable(document.getElementById('space-id').value, dateNeeded, startTime, endTime, isEditing ? reservationId : null)) { 
+                showNotification('Conflict: This event space is already scheduled for that time slot (Confirmed Event).'); return; 
+            } 
+            
+            // --- GATHER DATA ---
+            const equipment = {};
+            equipmentList.forEach(item => {
+                const el = document.getElementById(item.id);
+                const checkbox = document.querySelector(`input[data-qty-id="${item.id}"]`);
+                if (item.type === 'checkbox' && checkbox && checkbox.checked) {
+                    equipment[item.id] = true;
+                } else if (item.type === 'number' && el) {
+                    const val = parseInt(el.value);
+                    if (val > 0) {
+                        equipment[item.id] = val;
+                    }
+                }
+            });
+
+            // --- CREATE/UPDATE OBJECT ---
+            
+            const updatedReservation = {
+                id: reservationId,
+                user: currentUser.username,
+                department: currentUser.department,
+                dateFiled: isEditing ? currentItem.dateFiled : new Date().toISOString().split('T')[0],
+                
+                personInCharge: document.getElementById('person-in-charge').value,
+                contactNumber: document.getElementById('contact-number').value,
+
+                activityPurpose: document.getElementById('event-name').value,
+                division: document.getElementById('division').value,
+                attendees: document.getElementById('attendees').value,
+                participantType: participantTypeRadio ? participantTypeRadio.value : 'N/A',
+                participantOther: participantTypeRadio && participantTypeRadio.value === 'Others' ? document.getElementById('participant-other').value : undefined, 
+                classification: document.getElementById('classification').value,
+                
+                spaceId: document.getElementById('space-id').value,
+                startDate: dateNeeded,
+                endDate: dateNeeded,
+                startTime: startTime,
+                endTime: endTime,
+                
+                equipment: equipment,
+                conceptPaperFilename: conceptFileName,
+                finalFormFilename: `FacilityForm_${conceptFileName.replace('Concept', '').replace('.pdf', '')}.pdf`, 
+                // Only keep form uploaded status if editing and it was already true
+                finalFormUploaded: isEditing ? currentItem.finalFormUploaded : false, 
+                // If editing a denied reservation, push it back to pending for re-review
+                status: isEditing ? (currentItem.status === 'denied' ? 'pending' : currentItem.status) : 'pending' 
+            };
+            
+            // --- PERSIST CHANGES ---
+            if (isEditing) {
+                // Find and update in the 'reservations' array (if it was a request)
+                let index = reservations.findIndex(r => r.id === reservationId);
+                if (index > -1) {
+                    reservations[index] = updatedReservation;
+                }
+                
+                // Find and update in the 'eventSchedule' array (if it was approved)
+                let eventIndex = eventSchedule.findIndex(e => e.id === reservationId);
+                if (eventIndex > -1) {
+                    // Update Approved Event (maintaining approved status and event name structure)
+                    eventSchedule[eventIndex] = { 
+                        ...updatedReservation, 
+                        status: 'approved', 
+                        eventName: updatedReservation.activityPurpose 
+                    };
+                }
+
+                showNotification(`Reservation #${reservationId} updated successfully! Since the form was modified, the request has been reset to ${updatedReservation.status === 'pending' ? 'Pending' : 'Under Review'}.`);
+                currentReservation = updatedReservation;
+                showReservationDetails(currentReservation);
+            } else {
+                reservations.push(updatedReservation); 
+                showNotification('Request Sent! Waiting for admin approval of Concept Paper (Stage 1).'); 
+            }
+            
+            hideModal(reservationModal); 
+            updateAllViews();
+        });
+
+        // NEW: Reservation Detail Modal Listeners
+        detailModalClose.addEventListener('click', () => {
+            hideModal(reservationDetailModal);
+            currentReservation = null;
+        });
+        
+        // NEW: Edit Button Listener
+        detailModalEdit.addEventListener('click', () => {
+            if (currentReservation) {
+                hideModal(reservationDetailModal);
+                showReservationModal(currentReservation.spaceId, currentReservation);
+            }
+        });
+        
+        // NEW: Archive Button Listener
+        detailModalArchive.addEventListener('click', () => {
+             const isOwner = currentReservation.user === currentUser.username;
+             const isAdmin = currentUser.role === 'admin';
+             
+             // Check if user has permission to archive based on current status/role
+             // Users can archive if they own it AND it's in a final-reviewed state (approved, denied, concept-approved)
+             const canUserArchive = isOwner && (currentReservation.status === 'approved' || currentReservation.status === 'denied' || currentReservation.status === 'concept-approved');
+             const canAdminArchive = isAdmin && currentReservation.status !== 'archived';
+
+             if (currentReservation && (canAdminArchive || canUserArchive)) {
+                 // Using window.confirm is acceptable here as it's a critical, irreversible action (in a mock setting)
+                 if (window.confirm(`Are you sure you want to ARCHIVE this item? It will be moved out of active lists.`)) {
+                     archiveEvent(currentReservation);
+                 }
+             } else {
+                 showNotification("Access Denied: You cannot archive this item. Only approved, denied, or reviewed requests can be archived by the owner.");
+             }
+        });
+
+        // NEW: Delete Button Listener
+        detailModalDelete.addEventListener('click', () => {
+            if (!currentReservation) return;
+
+            const isApproved = currentReservation.status === 'approved';
+            const isOwner = currentReservation.user === currentUser.username;
+            const isAdmin = currentUser.role === 'admin';
+
+            // User can only delete their own PENDING or DENIED requests.
+            const userCanDelete = isOwner && (currentReservation.status === 'pending' || currentReservation.status === 'denied');
+            
+            // Admin can delete anything.
+            const adminCanDelete = isAdmin;
+            
+            if (userCanDelete || adminCanDelete) {
+                 if (window.confirm(`Are you sure you want to permanently DELETE this ${isApproved ? 'event' : 'request'}? This action cannot be undone.`)) {
+                    deleteEvent(currentReservation);
+                 }
+            } else {
+                 showNotification("Access Denied: You can only delete your own Pending or Denied requests.");
+            }
+        });
+        
+        // NEW: Print Request Info Button Listener
+        printRequestInfoBtn.addEventListener('click', () => {
+            if (!currentReservation) return;
+
+            let printApprovedForm = currentReservation.status === 'approved'; 
+            
+            // Populate Print Modal
+            document.getElementById('print-activity').textContent = currentReservation.activityPurpose;
+            document.getElementById('print-person-in-charge').textContent = currentReservation.personInCharge || 'N/A';
+            document.getElementById('print-contact-number').textContent = currentReservation.contactNumber || 'N/A';
+            document.getElementById('print-department').textContent = currentReservation.department;
+            document.getElementById('print-division').textContent = currentReservation.division || 'N/A';
+            document.getElementById('print-attendees').textContent = currentReservation.attendees || 'N/A';
+            let participants = currentReservation.participantType;
+            if (participants === 'Others' && currentReservation.participantOther) {
+                participants = `Others: ${currentReservation.participantOther}`;
+            }
+            document.getElementById('print-participants').textContent = participants || 'N/A';
+            document.getElementById('print-classification').textContent = currentReservation.classification || 'N/A';
+            document.getElementById('print-date-filed').textContent = currentReservation.dateFiled || 'N/A';
+            document.getElementById('print-venue').textContent = getEventSpaceById(currentReservation.spaceId).name;
+            document.getElementById('print-date-needed').textContent = currentReservation.startDate;
+            document.getElementById('print-start-time').textContent = currentReservation.startTime;
+            document.getElementById('print-end-time').textContent = currentReservation.endTime;
+            document.getElementById('print-concept-paper-file').textContent = currentReservation.conceptPaperFilename || 'Not recorded';
+
+            // Signed Facility Form file
+            printSignedFormFile.textContent = printApprovedForm ? (currentReservation.finalFormFilename || 'N/A (Error: Should have final form)') : 'N/A (Awaiting Stage 2 Upload)';
+            
+            const eqList = document.getElementById('print-equipment-list');
+            eqList.innerHTML = '';
+            if (currentReservation.equipment) {
+                equipmentList.forEach(item => {
+                    const val = currentReservation.equipment[item.id];
+                    if (val) {
+                        const li = document.createElement('li');
+                        li.textContent = `[${typeof val === 'boolean' ? '✓' : val}] ${item.label}`;
+                        eqList.appendChild(li);
+                    }
+                });
+            }
+            if(eqList.innerHTML === '') {
+                eqList.innerHTML = '<li>No equipment requested.</li>';
+            }
+            
+            // Update the print button text (Print Confirmed Form / Print Blank Facility Form)
+            printButton.textContent = printApprovedForm ? 'Print Confirmed Form' : 'Print Blank Facility Form';
+            showModal(printModal);
+        });
+
+
+        // State reset utility
+        function resetAdminActionButtons() {
+            stage1Actions.classList.add('hidden');
+            stage2Actions.classList.add('hidden');
+            denyReasonContainer.classList.add('hidden');
+            denyReasonInput.value = '';
+            confirmDenyBtn.disabled = true;
+        }
+
+        // --- STAGE 1 LISTENERS (Concept Approval) ---
+        stage1ApproveBtn.addEventListener('click', () => {
+            approveConceptPaper(currentReservation);
+        });
+
+        stage1DenyBtn.addEventListener('click', () => {
+            denyReasonContainer.classList.remove('hidden');
+            // Disable all action buttons until denial is confirmed or cancelled
+            stage1ApproveBtn.disabled = true;
+            stage1DenyBtn.disabled = true;
+            stage2ApproveBtn.disabled = true;
+            stage2DenyBtn.disabled = true;
+            denyReasonInput.focus();
+        });
+
+        // --- STAGE 2 LISTENERS (Final Form Approval) ---
+        stage2ApproveBtn.addEventListener('click', () => {
+            approveFinalReservation(currentReservation);
+        });
+
+        stage2DenyBtn.addEventListener('click', () => {
+            denyReasonContainer.classList.remove('hidden');
+            // Disable all action buttons until denial is confirmed or cancelled
+            stage1ApproveBtn.disabled = true;
+            stage1DenyBtn.disabled = true;
+            stage2ApproveBtn.disabled = true;
+            stage2DenyBtn.disabled = true;
+            denyReasonInput.focus();
+        });
+
+
+        cancelDenyBtn.addEventListener('click', () => {
+            resetAdminActionButtons();
+            // Re-call show details to correctly re-render the admin action panel based on status
+            if (currentReservation) showReservationDetails(currentReservation);
+        });
+        
+        denyReasonInput.addEventListener('input', () => {
+            confirmDenyBtn.disabled = denyReasonInput.value.trim().length === 0;
+        });
+
+        confirmDenyBtn.addEventListener('click', () => {
+            const reason = denyReasonInput.value.trim();
+            if (reason) {
+                denyReservation(reason, currentReservation.id); 
+                resetAdminActionButtons();
+            } else {
+                showNotification('Please provide a reason for the denial.');
+            }
+        });
+
+
+        // --- STAGE 2 USER UPLOAD LISTENERS (For 'concept-approved' users) ---
+        // Re-attach listener needed as we replaced the innerHTML of the panel
+        document.querySelector('#reservation-detail-modal').addEventListener('click', (e) => {
+            // Check for the dynamically added upload button
+            if (e.target && e.target.id === 'upload-stage-2-btn') {
+                document.getElementById('stage-2-form-upload').click(); 
+            }
+        });
+
+        stage2FormUpload.addEventListener('change', function() {
+            if (this.files.length > 0 && this.files[0].type === 'application/pdf') {
+                if (currentReservation && currentReservation.status === 'concept-approved') {
+                    const index = reservations.findIndex(r => r.id === currentReservation.id);
+                    if (index > -1) {
+                        reservations[index].finalFormUploaded = true;
+                        reservations[index].finalFormFilename = this.files[0].name;
+                        currentReservation = reservations[index]; 
+                        
+                        showNotification(`Signed Facility Form (${this.files[0].name}) uploaded successfully! Waiting for final admin approval (Stage 2).`);
+                        
+                        showReservationDetails(currentReservation); 
+                        updateAllViews();
+                    }
+                }
+            } else if (this.files.length > 0) {
+                showNotification('Error: Only PDF format allowed for the Facility Form.');
+                this.value = null; // Clear the input
+            }
+        });
+
+        // Print button listeners
+        printButton.addEventListener('click', () => {
+            window.print();
+        });
+        printModalClose.addEventListener('click', () => hideModal(printModal));
+
+        // --- INITIALIZATION ---
+        // App does not start until login
+    });
+</script>
+
+</body>
+</html>
