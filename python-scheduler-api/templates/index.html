@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VacanSee: Campus Event Space Reservation</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
@@ -47,9 +45,6 @@
                 </div>
                 <button type="submit" class="w-full bg-sky-500 text-white py-3 rounded-lg font-semibold hover:bg-sky-600 transition">Sign In</button>
                 <p id="login-error" class="text-red-500 text-sm text-center mt-4"></p>
-                <div class="text-center text-xs text-slate-400 mt-6">
-                    <p>Connected to Database</p>
-                </div>
             </form>
         </div>
     </div>
@@ -74,6 +69,13 @@
                         <span>Facilities Catalog</span>
                     </button>
                 </div>
+                <div id="admin-nav-section" style="display: none;">
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3">Admin</h2>
+                    <button data-view="reservations" class="nav-button w-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm12 5H5v5h10V10zm-9-3a1 1 0 000 2h4a1 1 0 000-2H6z" clip-rule="evenodd" /></svg>
+                        <span>Requests</span>
+                    </button>
+                </div>
             </nav>
             <div class="mt-auto border-t border-slate-200 pt-4">
                 <div class="flex items-center gap-3">
@@ -89,32 +91,14 @@
         <div class="main-wrapper no-scrollbar">
             <header>
                 <div class="flex justify-between items-center">
-                    <h2 class="text-xl font-bold text-slate-800">VacanSee - Campus Facility Reservation</h2>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Database Connected</span>
-                    </div>
+                    <h2 class="text-xl font-bold text-slate-800">VacanSee</h2>
+                    <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Database Connected</span>
                 </div>
             </header>
             <main class="main-content">
                 <div id="dashboard-view" data-view="dashboard">
                     <h2 class="text-2xl font-bold text-slate-800 mb-2" id="dashboard-title">Welcome</h2>
                     <p class="text-slate-500 mb-8" id="current-datetime">Loading...</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white border border-slate-200 rounded-xl p-6">
-                            <h4 class="text-slate-500 font-medium">Total Facilities</h4>
-                            <p id="stat-total-facilities" class="text-4xl font-bold text-slate-800 mt-2">0</p>
-                        </div>
-                        <div class="bg-white border border-slate-200 rounded-xl p-6">
-                            <h4 class="text-slate-500 font-medium">Total Capacity</h4>
-                            <p id="stat-total-capacity" class="text-4xl font-bold text-slate-800 mt-2">0</p>
-                        </div>
-                        <div class="bg-white border border-slate-200 rounded-xl p-6">
-                            <h4 class="text-slate-500 font-medium">Your Role</h4>
-                            <p id="stat-user-role" class="text-4xl font-bold text-slate-800 mt-2">-</p>
-                        </div>
-                    </div>
-                    
                     <div class="bg-white p-8 rounded-xl border border-slate-200">
                         <h3 class="text-2xl font-bold text-slate-800 mb-4">Available Facilities</h3>
                         <div id="facilities-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -127,6 +111,13 @@
                     <h2 class="text-2xl font-bold text-slate-800 mb-6">Facilities Catalog</h2>
                     <div id="facilities-catalog" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         <div class="text-center py-8 text-slate-500">Loading facilities...</div>
+                    </div>
+                </div>
+
+                <div id="reservations-view" data-view="reservations" class="hidden">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-6">Admin: Reservation Requests</h2>
+                    <div id="reservations-list" class="space-y-4">
+                        <p class="text-slate-500">Loading reservations...</p>
                     </div>
                 </div>
             </main>
@@ -142,13 +133,14 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('VacanSee initialized - Database Mode');
+        console.log('VacanSee initialized - Backend Connected');
         
-        // Load rooms from Flask backend
+        // Get rooms from Flask backend
         var roomsFromBackend = {{ rooms|tojson|safe }};
-        console.log('Loaded rooms from database:', roomsFromBackend);
+        console.log('Loaded rooms:', roomsFromBackend);
         
         var currentUser = null;
+        var allReservations = [];
         
         // UI Elements
         var loginPage = document.getElementById('login-page');
@@ -164,20 +156,12 @@
         var notificationOkBtn = document.getElementById('notification-ok');
         var facilitiesList = document.getElementById('facilities-list');
         var facilitiesCatalog = document.getElementById('facilities-catalog');
+        var reservationsList = document.getElementById('reservations-list');
         var navButtons = document.querySelectorAll('.nav-button');
+        var adminNavSection = document.getElementById('admin-nav-section');
         
-        var statTotalFacilities = document.getElementById('stat-total-facilities');
-        var statTotalCapacity = document.getElementById('stat-total-capacity');
-        var statUserRole = document.getElementById('stat-user-role');
-        
-        function showModal(modal) { 
-            modal.classList.add('visible'); 
-        }
-        
-        function hideModal(modal) { 
-            modal.classList.remove('visible'); 
-        }
-        
+        function showModal(modal) { modal.classList.add('visible'); }
+        function hideModal(modal) { modal.classList.remove('visible'); }
         function showNotification(message) { 
             document.getElementById('notification-message').textContent = message; 
             showModal(notificationModal); 
@@ -190,6 +174,19 @@
             });
         }
         
+        async function loadReservations() {
+            try {
+                var response = await fetch('/api/reservations');
+                if (response.ok) {
+                    allReservations = await response.json();
+                    console.log('Loaded reservations:', allReservations);
+                    renderReservations();
+                }
+            } catch (error) {
+                console.error('Error loading reservations:', error);
+            }
+        }
+        
         function renderFacilities() {
             facilitiesList.innerHTML = '';
             facilitiesCatalog.innerHTML = '';
@@ -200,11 +197,8 @@
                 return;
             }
             
-            var totalCapacity = 0;
             roomsFromBackend.forEach(function(room) {
-                totalCapacity += room.capacity || 0;
-                
-                // Dashboard simple cards
+                // Dashboard cards
                 var dashCard = document.createElement('div');
                 dashCard.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200 hover:border-sky-300 transition cursor-pointer';
                 dashCard.innerHTML = '<div class="flex justify-between items-start mb-2">' +
@@ -215,25 +209,50 @@
                     '<p class="text-xs text-slate-500">' + (room.usual_activity || 'General use') + '</p>';
                 facilitiesList.appendChild(dashCard);
                 
-                // Catalog detailed cards
+                // Catalog cards
                 var imageUrl = 'https://placehold.co/400x200/f0f9ff/0ea5e9?text=' + encodeURIComponent(room.name.replace(/\s/g, '+'));
                 var catCard = document.createElement('div');
                 catCard.className = 'bg-white rounded-xl shadow-lg overflow-hidden border border-slate-100 flex flex-col transition hover:shadow-xl hover:border-sky-300';
                 catCard.innerHTML = '<img src="' + imageUrl + '" alt="' + room.name + '" class="w-full h-40 object-cover">' +
                     '<div class="p-5 flex flex-col flex-grow">' +
                     '<h3 class="text-xl font-bold text-slate-800 mb-2">' + room.name + '</h3>' +
-                    '<p class="text-sm text-slate-600 mb-3 flex-grow">' + (room.description || 'No description') + '</p>' +
-                    '<div class="space-y-1 text-sm mb-4 pt-3 border-t border-slate-100">' +
-                    '<p class="text-slate-700"><span class="font-semibold text-sky-600">Capacity:</span> ' + room.capacity + ' pax</p>' +
-                    '<p class="text-slate-700"><span class="font-semibold text-sky-600">Usual Activity:</span> ' + (room.usual_activity || 'General use') + '</p>' +
+                    '<p class="text-sm text-slate-600 mb-3 flex-grow">' + (room.description || '') + '</p>' +
+                    '<div class="space-y-1 text-sm mb-4 pt-3 border-t">' +
+                    '<p><span class="font-semibold text-sky-600">Capacity:</span> ' + room.capacity + '</p>' +
+                    '<p><span class="font-semibold text-sky-600">Usual Activity:</span> ' + (room.usual_activity || 'General') + '</p>' +
                     '</div>' +
-                    '<button class="reserve-btn mt-auto w-full bg-sky-500 text-white py-2 rounded-lg font-semibold hover:bg-sky-600 transition">Reserve</button>' +
+                    '<button class="w-full bg-sky-500 text-white py-2 rounded-lg hover:bg-sky-600 transition">Reserve</button>' +
                     '</div>';
                 facilitiesCatalog.appendChild(catCard);
             });
+        }
+        
+        function renderReservations() {
+            reservationsList.innerHTML = '';
             
-            statTotalFacilities.textContent = roomsFromBackend.length;
-            statTotalCapacity.textContent = totalCapacity.toLocaleString();
+            if (!allReservations || allReservations.length === 0) {
+                reservationsList.innerHTML = '<p class="text-slate-500">No reservations found.</p>';
+                return;
+            }
+            
+            allReservations.forEach(function(res) {
+                var statusColor = 'bg-yellow-100 text-yellow-800';
+                if (res.status === 'approved') statusColor = 'bg-green-100 text-green-800';
+                else if (res.status === 'denied') statusColor = 'bg-red-100 text-red-800';
+                else if (res.status === 'concept-approved') statusColor = 'bg-blue-100 text-blue-800';
+                
+                var card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-xl border border-slate-200 hover:shadow-md transition';
+                card.innerHTML = '<div class="flex justify-between items-start">' +
+                    '<div>' +
+                    '<h4 class="font-bold text-slate-800">' + res.activity_purpose + '</h4>' +
+                    '<p class="text-sm text-slate-600">By: ' + res.user + ' (' + res.department + ')</p>' +
+                    '<p class="text-xs text-slate-500">Filed: ' + (res.date_filed || 'N/A') + '</p>' +
+                    '</div>' +
+                    '<span class="text-xs font-medium px-3 py-1 rounded-full ' + statusColor + '">' + res.status + '</span>' +
+                    '</div>';
+                reservationsList.appendChild(card);
+            });
         }
         
         function setupUI() {
@@ -244,19 +263,21 @@
             sidebarAvatar.src = avatarUrl;
             sidebarUsername.textContent = currentUser.username;
             dashboardTitle.textContent = 'Welcome, ' + currentUser.username;
-            statUserRole.textContent = currentUser.role;
+            
+            adminNavSection.style.display = currentUser.role === 'admin' ? 'block' : 'none';
             
             updateDateTime();
             renderFacilities();
+            
+            if (currentUser.role === 'admin') {
+                loadReservations();
+            }
         }
         
         function switchView(viewName) {
-            // Update nav button active state
             navButtons.forEach(function(btn) {
                 btn.classList.toggle('active', btn.dataset.view === viewName);
             });
-            
-            // Hide all main content views (only <main> children, not navigation buttons)
             var contentViews = document.querySelectorAll('.main-content > [data-view]');
             contentViews.forEach(function(view) {
                 if (view.dataset.view === viewName) {
@@ -270,7 +291,6 @@
         // Login handler
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            console.log('Login form submitted');
             loginError.textContent = '';
             
             var username = document.getElementById('username').value;
@@ -284,36 +304,33 @@
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.status === 'success') {
-                    console.log('Login successful');
-                    currentUser = { username: username, role: data.role };
+                    currentUser = { 
+                        username: data.username, 
+                        role: data.role,
+                        department: data.department
+                    };
                     loginPage.style.display = 'none';
                     appContainer.classList.remove('hidden');
                     setupUI();
-                    showNotification('Welcome back, ' + username + '!');
+                    showNotification('Welcome, ' + username + '!');
                 } else {
-                    console.log('Login failed:', data.message);
                     loginError.textContent = data.message || 'Invalid credentials';
                 }
             })
             .catch(function(error) {
                 console.error('Login error:', error);
-                loginError.textContent = 'Connection error. Please try again.';
+                loginError.textContent = 'Connection error';
             });
         });
         
         // Logout handler
         logoutBtn.addEventListener('click', function() {
-            console.log('Logging out');
             fetch('/logout')
             .then(function() {
                 currentUser = null;
                 loginPage.style.display = 'flex';
                 appContainer.classList.add('hidden');
                 loginForm.reset();
-                loginError.textContent = '';
-            })
-            .catch(function(error) {
-                console.error('Logout error:', error);
             });
         });
         
@@ -321,16 +338,15 @@
         navButtons.forEach(function(button) {
             button.addEventListener('click', function() {
                 var view = button.dataset.view;
+                if (view === 'reservations' && currentUser.role !== 'admin') return;
                 switchView(view);
             });
         });
         
-        // Notification OK button
+        // Notification
         notificationOkBtn.addEventListener('click', function() { 
             hideModal(notificationModal); 
         });
-        
-        console.log('All event listeners attached successfully');
     });
 </script>
 
