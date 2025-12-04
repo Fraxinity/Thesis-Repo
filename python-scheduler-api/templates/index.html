@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VacanSee: Campus Event Space Reservation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Very Light Gray */
+        }
+        /* Login Page Styles */
+        #login-page { display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #e2e8f0; }
+        .login-card { background: white; padding: 3rem; border-radius: 1.5rem; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); width: 100%; max-width: 420px; }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            height: 100vh;
+        }
+        .sidebar {
+            background-color: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+        }
+        .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        header {
+            padding: 1.5rem 2.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .main-content {
+            padding: 2.5rem;
+            flex-grow: 1;
+        }
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            color: #475569;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-button:hover {
+            background-color: #f1f5f9;
+            color: #0ea5e9;
+        }
+        .nav-button.active {
+            background-color: #e0f2fe;
+            color: #0ea5e9;
+            font-weight: 600;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        #ai-modal .response-bubble { max-width: 90%; padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.5rem; line-height: 1.5; word-wrap: break-word; }
+        #ai-modal .user-bubble { background-color: #0ea5e9; color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        #ai-modal .ai-bubble { background-color: #f1f5f9; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        
+        /* New Calendar Styles */
+        .calendar-header-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+            border: 1px solid #e2e8f0;
+        }
+        .calendar-day-header {
+            text-align: center;
+            font-semibold;
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            background-color: #f8fafc;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+        }
+        .calendar-day {
+            background-color: white;
+            min-height: 120px;
+            padding: 0.5rem;
+        }
+        .calendar-day-empty {
+            background-color: #f8fafc;
+            min-height: 120px;
+        }
+        .calendar-day-number {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        .calendar-day-today .calendar-day-number {
+            background-color: #0ea5e9;
+            color: white;
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .calendar-day-event {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            background-color: #38bdf8;
+            color: white;
+            border-radius: 4px;
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: default;
+        }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-content { background: white; padding: 2rem; border-radius: 1rem; max-width: 800px; width: 90%; transform: scale(0.95); transition: transform 0.3s; max-height: 90vh; overflow-y: auto; }
+        .modal-overlay.visible .modal-content { transform: scale(1); }
+        
+        .chart-bar { background-color: #0ea5e9; color: white; text-align: right; padding-right: 5px; line-height: 20px; font-size: 12px; border-radius: 3px; transition: width 0.5s ease-in-out; }
+        .filter-btn { background-color: #e5e7eb; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: background-color 0.2s; }
+        .filter-btn.active { background-color: #0ea5e9; color: white; }
+
+        /* Print-specific styles */
+        @media print {
+            body * { visibility: hidden; }
+            #print-modal, #print-modal * { visibility: visible; }
+            #print-modal { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; max-height: 100%; border-radius: 0; padding: 1rem; }
+            #print-modal-header, #print-modal-footer { display: none; }
+            .print-section-title { border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; background-color: #eee; padding: 4px; font-weight: bold; margin-top: 1rem; }
+            .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+            .print-grid-full { grid-column: 1 / -1; }
+            .print-field { margin-bottom: 0.5rem; }
+            .print-field label { font-size: 0.8rem; color: #555; display: block; }
+            .print-field span { font-size: 1rem; font-weight: 500; border-bottom: 1px solid #ddd; display: block; padding: 2px 0; }
+            .print-signatures { margin-top: 3rem; display: flex; justify-content: space-around; }
+            .print-signature-box { text-align: center; width: 40%; border-top: 1px solid #000; padding-top: 0.5rem; font-weight: 500; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Page -->
+    {% if not current_user.is_authenticated %}
+        <div id="login-page">
+            <div class="login-card">
+                <div class="text-center mb-10"><h1 class="text-4xl font-bold text-slate-800">Vacan<span class="text-sky-500">See</span></h1><p class="text-slate-500 mt-2">Sign in to book event spaces</p></div>
+                <form id="login-form" method="POST" action="/login">
+                    <div class="mb-4">
+                        <label for="username" class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                        <input type="text" id="username" name="username" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500" required></div>
+                    <div class="mb-6">
+                        <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <input type="password" id="password" name="password" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500" required></div>
+                    <button type="submit" class="w-full bg-sky-500 text-white py-3 rounded-lg font-semibold hover:bg-sky-600 transition">Sign In</button>
+                    <p id="login-error" class="text-red-500 text-sm text-center mt-4"></p>
+                    <div class="text-center text-xs text-slate-400 mt-6"><p>Hint: Use 'admin'/'admin123' or 'user'/'user123'</p></div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+    <!-- Main Application -->
+    {% if current_user.is_authenticated %}
+        <div id="app-container" class="app-container hidden">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="text-sky-500 mb-10"><h1 class="text-3xl font-bold">Vacan<span class="text-sky-400">See</span></h1></div>
+                <nav class="flex flex-col gap-4 flex-grow w-full">
+                    <div>
+                        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3">Main</h2>
+                        <button data-view="dashboard" class="nav-button active w-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg><span>Dashboard</span></button>
+                    </div>
+                    <div>
+                        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3">Views</h2>
+                        <button data-view="calendar" class="nav-button w-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg><span>Event Calendar</span></button>
+                    </div>
+                    <div id="admin-nav-section">
+                        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3">Admin</h2>
+                        <button data-view="analytics" id="analytics-nav-btn" class="nav-button w-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg><span>Analytics</span></button>
+                    </div>
+                </nav>
+                <div class="mt-auto border-t border-slate-200 pt-4">
+                    <div class="flex items-center gap-3">
+                        <img id="sidebar-avatar" src="" alt="User" class="w-10 h-10 rounded-full">
+                        <div>
+                            <p id="sidebar-username" class="font-semibold text-slate-700"></p>
+                            <a href="/logout" class="text-xs text-slate-500 hover:text-sky-500">Log out</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Wrapper -->
+            <div class="main-wrapper no-scrollbar">
+                <header>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-4">
+                            <div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input type="search" placeholder="Search..." class="w-64 pl-10 pr-4 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500"></div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <button id="ai-modal-btn" class="text-slate-500 hover:text-sky-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 00-1-1v-.5a1.5 1.5 0 01-3 0v.5a1 1 0 00-1 1H6a1 1 0 01-1-1v-3a1 1 0 011-1h.5a1.5 1.5 0 000-3H6a1 1 0 01-1-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" /></svg></button>
+                            <button class="text-slate-500 hover:text-sky-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></button>
+                            <div id="header-avatar" class="w-10 h-10 rounded-full bg-slate-200 bg-cover bg-center"></div>
+                        </div>
+                    </div>
+                </header>
+                <main class="main-content">
+                    <div id="dashboard-view" data-view="dashboard">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2" id="dashboard-title">Welcome</h2>
+                        <p class="text-slate-500 mb-8" id="current-datetime">Loading...</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="bg-white border border-slate-200 rounded-xl p-6"><h4 class="text-slate-500 font-medium">Available Spaces Today</h4><p id="stat-available-spaces" class="text-4xl font-bold text-slate-800 mt-2">0</p></div>
+                            <div class="bg-white border border-slate-200 rounded-xl p-6"><h4 id="pending-requests-title" class="text-slate-500 font-medium">My Pending Requests</h4><p id="stat-pending-requests" class="text-4xl font-bold text-slate-800 mt-2">0</p></div>
+                            <div class="bg-white border border-slate-200 rounded-xl p-6"><h4 class="text-slate-500 font-medium">My Approved Events</h4><p id="stat-approved-events" class="text-4xl font-bold text-slate-800 mt-2">0</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white border border-slate-200 rounded-xl"><h3 class="text-xl font-semibold text-slate-700 p-6">Event Space Availability (Now)</h3><div id="space-availability-list" class="p-6 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4"></div></div>
+                            <div class="bg-white border border-slate-200 rounded-xl"><h3 class="text-xl font-semibold text-slate-700 p-6">My Reservations</h3><div id="my-reservations-list" class="p-6 pt-0 space-y-3 max-h-96 overflow-y-auto"></div></div>
+                        </div>
+                    </div>
+                
+                    <div id="calendar-view" data-view="calendar" class="hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-2">
+                            <button id="calendar-prev" class="px-3 py-1 bg-slate-200 rounded-md hover:bg-slate-300">&lt;</button>
+                            <h3 id="calendar-month-year" class="text-xl font-semibold w-36 text-center">Loading...</h3>
+                            <button id="calendar-next" class="px-3 py-1 bg-slate-200 rounded-md hover:bg-slate-300">&gt;</button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                            <label for="calendar-filter" class="text-sm font-medium">Filter by Space:</label>
+                            <select id="calendar-filter" class="px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
+                                <option value="all">All Spaces</option>
+                                <!-- Options populated by JS -->
+                            </select>
+                            </div>
+                        </div>
+                        <div class="calendar-header-grid">
+                            <div class="calendar-day-header">Sun</div>
+                            <div class="calendar-day-header">Mon</div>
+                            <div class="calendar-day-header">Tue</div>
+                            <div class="calendar-day-header">Wed</div>
+                            <div class="calendar-day-header">Thu</div>
+                            <div class="calendar-day-header">Fri</div>
+                            <div class="calendar-day-header">Sat</div>
+                        </div>
+                        <div id="calendar-grid-days" class="calendar-grid">
+                            <!-- Days populated by JS -->
+                        </div>
+                    </div>
+                
+                    <div id="analytics-view" data-view="analytics" class="hidden flex flex-col gap-8">
+                        <div><h3 class="text-xl font-semibold text-slate-700 mb-4">Pending Reservations</h3><div id="pending-reservations-admin" class="space-y-3"></div></div>
+                        <div>
+                            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-semibold text-slate-700">Most Used Event Spaces</h3><div class="flex items-center gap-2"><button id="filter-today" class="filter-btn">Today</button><button id="filter-week" class="filter-btn active">This Week</button></div></div>
+                            <div id="analytics-container" class="space-y-4"></div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <script>
+        // Force the app to show immediately
+        document.getElementById('app-container').classList.remove('hidden');
+        </script>
+    {% endif %}
+    <!-- Modals -->
+    <div id="reservation-modal" class="modal-overlay">
+        <div class="modal-content no-scrollbar">
+            <h3 id="modal-title" class="text-2xl font-bold mb-6">Request an Event Space</h3>
+            <form id="reservation-form" class="space-y-6">
+                <fieldset>
+                    <legend class="text-lg font-semibold text-slate-800 mb-3">1. Event Details</legend>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2"><label for="event-name" class="block text-sm font-medium text-slate-700">Activity / Purpose</label><input type="text" id="event-name" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div><label for="division" class="block text-sm font-medium text-slate-700">Division</label><input type="text" id="division" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div><label for="attendees" class="block text-sm font-medium text-slate-700">Number of Attendees</label><input type="number" id="attendees" required min="1" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-medium text-slate-700">Participants</label>
+                            <div class="flex flex-wrap items-center gap-4 mt-2">
+                                <label class="flex items-center"><input type="radio" name="participant-type" value="Student" class="mr-1"><span class="text-sm">Student</span></label>
+                                <label class="flex items-center"><input type="radio" name="participant-type" value="Employee" class="mr-1"><span class="text-sm">Employee</span></label>
+                                <label class="flex items-center"><input type="radio" name="participant-type" value="Others" class="mr-1"><span class="text-sm">Others:</span></label>
+                                <input type="text" id="participant-other" placeholder="Please specify..." class="flex-grow px-2 py-1 border border-slate-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
+                            </div>
+                        </div>
+                        <div class="md:col-span-2"><label for="classification" class="block text-sm font-medium text-slate-700">Classification of Activity</label><select id="classification" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
+                            <option>Institutional</option><option>Co-curricular</option><option>Curricular</option><option>Extra-curricular</option><option>Outside Group</option>
+                        </select></div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend class="text-lg font-semibold text-slate-800 mb-3">2. Facility & Time Request</legend>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="space-id" class="block text-sm font-medium text-slate-700">Facility / Venue</label><select id="space-id" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></select></div>
+                        <div><label for="start-date" class="block text-sm font-medium text-slate-700">Start Date</label><input type="date" id="start-date" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div><label for="start-time" class="block text-sm font-medium text-slate-700">Start Time</label><input type="time" id="start-time" required step="1800" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div><label for="end-date" class="block text-sm font-medium text-slate-700">End Date</label><input type="date" id="end-date" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></div>
+                        <div><label for="end-time" class="block text-sm font-medium text-slate-700">End Time</label><input type="time" id="end-time" required step="1800" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"></div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend class="text-lg font-semibold text-slate-800 mb-3">3. Equipment & Services</legend>
+                    <div id="equipment-grid" class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-sm">
+                        <!-- Equipment list populated by JS -->
+                    </div>
+                </fieldset>
+
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" id="cancel-reservation" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600">Request Reservation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="notification-modal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <p id="notification-message" class="text-lg mb-6"></p>
+            <button id="notification-ok" class="px-6 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600">OK</button>
+        </div>
+    </div>
+    <div id="ai-modal" class="modal-overlay">
+        <div class="modal-content w-full max-w-lg h-[70vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4"><h3 class="text-2xl font-bold">Gemini AI Assistant</h3><button id="ai-modal-close" class="text-lg font-bold text-slate-500 hover:text-slate-800">&times;</button></div>
+            <div id="ai-response-container" class="flex-grow overflow-y-auto mb-4 p-4 bg-slate-50 rounded-lg no-scrollbar flex flex-col space-y-2"><div class="ai-bubble response-bubble">Hello! How can I help you? Just ask about event space availability. E.g., "Is the gymnasium free on Friday afternoon?"</div></div>
+            <div class="flex items-center gap-2 mt-auto">
+                <input type="text" id="ai-prompt" placeholder="Ask something..." class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <button id="ai-submit" class="bg-sky-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-sky-600 transition flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" /></svg></button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Print Modal -->
+    <div id="print-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div id="print-modal-header" class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Common Facility Request Form</h3>
+                <button id="print-modal-close" class="text-lg font-bold text-slate-500 hover:text-slate-800">&times;</button>
+            </div>
+            
+            <div id="print-form-content" class="text-slate-800">
+                <div class="text-center mb-4 border-b pb-4">
+                    <h4 class="text-xl font-bold">University of Perpetual Help System DALTA</h4>
+                    <p class="text-sm">Common Facility Request Form</p>
+                </div>
+                
+                <div class="print-section-title">A. EVENT DETAILS</div>
+                <div class="print-grid mt-4">
+                    <div class="print-field print-grid-full"><label>Activity / Purpose:</label><span id="print-activity"></span></div>
+                    <div class="print-field"><label>Department:</label><span id="print-department"></span></div>
+                    <div class="print-field"><label>Division:</label><span id="print-division"></span></div>
+                    <div class="print-field"><label>Number of Attendees:</label><span id="print-attendees"></span></div>
+                    <div class="print-field"><label>Participants:</label><span id="print-participants"></span></div>
+                    <div class="print-field"><label>Classification:</label><span id="print-classification"></span></div>
+                    <div class="print-field"><label>Date Filed:</label><span id="print-date-filed"></span></div>
+                </div>
+
+                <div class="print-section-title">B. FACILITY REQUEST</div>
+                <div class="print-grid mt-4">
+                    <div class="print-field"><label>Venue:</label><span id="print-venue"></span></div>
+                    <div class="print-field"><label>Start Date:</label><span id="print-start-date"></span></div>
+                    <div class="print-field"><label>End Date:</label><span id="print-end-date"></span></div>
+                    <div class="print-field"><label>Start Time:</label><span id="print-start-time"></span></div>
+                    <div class="print-field"><label>End Time:</label><span id="print-end-time"></span></div>
+                </div>
+
+                <div class="print-section-title">C. EQUIPMENT / SERVICES</div>
+                <ul id="print-equipment-list" class="text-sm mt-4 grid grid-cols-3 gap-2 list-none p-0">
+                    <!-- Equipment list will be populated here by JS -->
+                </ul>
+
+                <div class="print-signatures">
+                    <div class="print-signature-box">Requesting Party</div>
+                    <div class="print-signature-box">Approved By (Admin)</div>
+                </div>
+            </div>
+
+            <div id="print-modal-footer" class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button type="button" id="print-button" class="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600">Print Form</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        
+    
+        let eventSpaces = [
+            {% for room in rooms %}
+                { id: "{{ room.id }}", name: "{{ room.name }}" },
+            {% endfor %}
+        ];
+        
+        let eventSchedule = [];
+        
+        let reservations = [];
+
+        // --- UI ELEMENT GRAB ---
+        const loginPage = document.getElementById('login-page');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        const adminNavSection = document.getElementById('admin-nav-section');
+        const navButtons = document.querySelectorAll('.nav-button');
+        const views = { dashboard: document.getElementById('dashboard-view'), calendar: document.getElementById('calendar-view'), analytics: document.getElementById('analytics-view') };
+        
+        const currentDatetimeEl = document.getElementById('current-datetime');
+        const sidebarAvatar = document.getElementById('sidebar-avatar');
+        const headerAvatar = document.getElementById('header-avatar');
+        const sidebarUsername = document.getElementById('sidebar-username');
+        const dashboardTitle = document.getElementById('dashboard-title');
+        
+        const aiModal = document.getElementById('ai-modal');
+        const aiModalBtn = document.getElementById('ai-modal-btn');
+        const aiModalClose = document.getElementById('ai-modal-close');
+        
+        const statAvailableSpaces = document.getElementById('stat-available-spaces');
+        const statPendingRequests = document.getElementById('stat-pending-requests');
+        const statApprovedEvents = document.getElementById('stat-approved-events');
+        const pendingRequestsTitle = document.getElementById('pending-requests-title');
+        
+        const spaceAvailabilityList = document.getElementById('space-availability-list');
+        const myReservationsList = document.getElementById('my-reservations-list');
+        
+        const calendarGridDays = document.getElementById('calendar-grid-days');
+        const calendarMonthYear = document.getElementById('calendar-month-year');
+        const calendarPrevBtn = document.getElementById('calendar-prev');
+        const calendarNextBtn = document.getElementById('calendar-next');
+        const calendarFilter = document.getElementById('calendar-filter');
+
+        const analyticsContainer = document.getElementById('analytics-container');
+        const pendingReservationsAdmin = document.getElementById('pending-reservations-admin');
+        
+        const aiPromptInput = aiModal.querySelector('#ai-prompt');
+        const aiSubmitBtn = aiModal.querySelector('#ai-submit');
+        const aiResponseContainer = aiModal.querySelector('#ai-response-container');
+        
+        const reservationModal = document.getElementById('reservation-modal');
+        const notificationModal = document.getElementById('notification-modal');
+        
+        const cancelReservationBtn = reservationModal.querySelector('#cancel-reservation');
+        const notificationOkBtn = notificationModal.querySelector('#notification-ok');
+        const filterTodayBtn = document.getElementById('filter-today');
+        const filterWeekBtn = document.getElementById('filter-week');
+        const reservationForm = document.getElementById('reservation-form');
+        const equipmentGrid = document.getElementById('equipment-grid');
+
+        // Print Modal Elements
+        const printModal = document.getElementById('print-modal');
+        const printModalClose = document.getElementById('print-modal-close');
+        const printButton = document.getElementById('print-button');
+
+        // --- APP STATE ---
+        let intervals = [];
+        let calendarDate = new Date();
+        const equipmentList = [
+            { id: 'eq-tables', label: 'Tables', type: 'number' }, { id: 'eq-chairs', label: 'Chairs', type: 'number' }, { id: 'eq-laptop', label: 'Laptop', type: 'number' },
+            { id: 'eq-ph-flag', label: 'PH Flag', type: 'checkbox' }, { id: 'eq-college-flag', label: 'College Flag', type: 'checkbox' }, { id: 'eq-university-flag', label: 'University Flag', type: 'checkbox' },
+            { id: 'eq-lcd-projector', label: 'LCD Projector', type: 'checkbox' }, { id: 'eq-white-screen', label: 'White Screen', type: 'checkbox' }, { id: 'eq-tv', label: 'TV', type: 'checkbox' },
+            { id: 'eq-still-camera', label: 'Still Camera', type: 'checkbox' }, { id: 'eq-video-camera', label: 'Video Camera', type: 'checkbox' },
+            { id: 'eq-sound-system', label: 'Sound System', type: 'checkbox' }, { id: 'eq-microphone', label: 'Microphone', type: 'number' }, 
+            { id: 'eq-speaker', label: 'Speaker', type: 'number' }, { id: 'eq-lights-setup', label: 'Lights Setup', type: 'checkbox' }, { id: 'eq-podium', label: 'Podium', type: 'checkbox' }
+        ];
+
+        // --- HELPER & CORE LOGIC FUNCTIONS ---
+        const timeToMinutes = (timeStr) => { if (!timeStr) return 0; const [h, m] = timeStr.split(':').map(Number); return h * 60 + m; };
+        const getEventSpaceById = (spaceId) => eventSpaces.find(s => s.id === spaceId);
+        function showModal(modal) { modal.classList.add('visible'); }
+        function hideModal(modal) { modal.classList.remove('visible'); }
+        function showNotification(message) { notificationModal.querySelector('#notification-message').textContent = message; showModal(notificationModal); }
+        
+        function parseDate(dateStr) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        function isSpaceOccupied(spaceId, date) {
+            const checkTime = date.getTime();
+            return eventSchedule.some(e => {
+                if (e.spaceId !== spaceId) return false;
+                const start = new Date(`${e.startDate}T${e.startTime}`).getTime();
+                const end = new Date(`${e.endDate}T${e.endTime}`).getTime();
+                return checkTime >= start && checkTime < end;
+            });
+        }
+        
+        function isDateRangeAvailable(spaceId, startDate, endDate, startTime, endTime) {
+            const newStart = new Date(`${startDate}T${startTime}`).getTime();
+            const newEnd = new Date(`${endDate}T${endTime}`).getTime();
+            
+            if (newStart >= newEnd) return false; // Basic validation
+            
+            const allBookings = [...eventSchedule, ...reservations.filter(r => r.status === 'pending')];
+            
+            for (const event of allBookings) {
+                if (event.spaceId !== spaceId) continue;
+                
+                const oldStart = new Date(`${event.startDate}T${event.startTime}`).getTime();
+                const oldEnd = new Date(`${event.endDate}T${event.endTime}`).getTime();
+                
+                // Check for overlap: (StartA < EndB) and (EndA > StartB)
+                if (newStart < oldEnd && newEnd > oldStart) {
+                    return false; // Found an overlap
+                }
+            }
+            return true; // No overlaps
+        }
+        
+        function appendMessage(text, sender) { 
+            const bubble = document.createElement('div'); 
+            bubble.className = `response-bubble ${sender}-bubble`; 
+            bubble.textContent = text; 
+            aiResponseContainer.appendChild(bubble); 
+            aiResponseContainer.scrollTop = aiResponseContainer.scrollHeight; 
+        }
+        
+        function updateDateTime() {
+            const now = new Date();
+            currentDatetimeEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        
+        function updateAllViews() { 
+            updateDashboard(); 
+            renderFullCalendar(); 
+            if(currentUser.role === 'admin') {
+                renderAnalyticsView();
+            } 
+        }
+        
+        function updateDashboard() {
+            const now = new Date();
+            let availableSpaceCount = 0;
+            spaceAvailabilityList.innerHTML = '';
+            eventSpaces.forEach(space => { 
+                const isOccupied = isSpaceOccupied(space.id, now);
+                availableSpaceCount += isOccupied ? 0 : 1;
+                const card = document.createElement('div'); 
+                card.className = `bg-slate-50 p-3 rounded-lg border border-slate-200 transition ${!isOccupied ? 'hover:border-sky-300 cursor-pointer' : 'opacity-60'}`;
+                card.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="flex h-2.5 w-2.5 relative mr-2">
+                            ${!isOccupied ? '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>' : ''}
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 ${isOccupied ? 'bg-red-500' : 'bg-green-500'}"></span>
+                        </span>
+                        <h4 class="font-semibold text-slate-800 text-sm">${space.name}</h4>
+                    </div>
+                    <p class="text-xs text-slate-500 ml-5">${isOccupied ? 'Booked' : 'Available'}</p>`; 
+                if (!isOccupied) {
+                    card.onclick = () => showReservationModal(space.id); 
+                }
+                spaceAvailabilityList.appendChild(card); 
+            });
+            statAvailableSpaces.textContent = availableSpaceCount;
+
+            const myPending = reservations.filter(r => r.user === currentUser.username && r.status === 'pending');
+            const myApproved = eventSchedule.filter(e => e.user === currentUser.username);
+            
+            if (currentUser.role === 'admin') {
+                pendingRequestsTitle.textContent = 'Total Pending Requests';
+                statPendingRequests.textContent = reservations.filter(r => r.status === 'pending').length;
+            } else {
+                pendingRequestsTitle.textContent = 'My Pending Requests';
+                statPendingRequests.textContent = myPending.length;
+            }
+            statApprovedEvents.textContent = myApproved.length;
+            
+            myReservationsList.innerHTML = '';
+            const allMyReservations = [
+                ...myPending, 
+                ...myApproved.map(e => ({...e, status: 'approved', eventName: e.activityPurpose || e.eventName}))
+            ];
+            
+            if (allMyReservations.length === 0) {
+                 myReservationsList.innerHTML = '<p class="text-slate-500 text-sm">You have no upcoming reservations.</p>';
+            } else {
+                allMyReservations.sort((a,b) => parseDate(a.startDate).getTime() - parseDate(b.startDate).getTime() || timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+                    .forEach(res => {
+                        const space = getEventSpaceById(res.spaceId);
+                        const card = document.createElement('div');
+                        card.className = 'p-3 rounded-lg border border-slate-200 flex justify-between items-center';
+                        card.innerHTML = `
+                            <div>
+                                <p class="font-semibold text-sm text-slate-700">${res.eventName || res.activityPurpose}</p>
+                                <p class="text-xs text-slate-500">${space.name} | ${res.startDate} @ ${res.startTime}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full ${res.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">${res.status}</span>
+                                ${res.status === 'approved' ? `<button data-id="${res.id}" class="print-request-btn text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full hover:bg-sky-200">Print</button>` : ''}
+                            </div>
+                        `;
+                        myReservationsList.appendChild(card);
+                    });
+            }
+        }
+        
+        function renderFullCalendar() { 
+            calendarDate.setDate(1); // Start from the 1st of the month
+            const year = calendarDate.getFullYear();
+            const month = calendarDate.getMonth();
+            
+            calendarMonthYear.textContent = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            const firstDayOfMonth = calendarDate.getDay(); // 0-6
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            calendarGridDays.innerHTML = '';
+            
+            // 1. Add empty cells for days before the 1st
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                calendarGridDays.innerHTML += `<div class="calendar-day-empty"></div>`;
+            }
+
+            // 2. Add cells for each day of the month
+            const today = new Date();
+            const todayDate = today.getDate();
+            const todayMonth = today.getMonth();
+            const todayYear = today.getFullYear();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day';
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'calendar-day-number';
+                dayNumber.textContent = day;
+                
+                if (day === todayDate && month === todayMonth && year === todayYear) {
+                    dayCell.classList.add('calendar-day-today');
+                }
+                dayCell.appendChild(dayNumber);
+
+                // Find events for this day
+                const currentDay = new Date(year, month, day).getTime();
+                const filterValue = calendarFilter.value;
+
+                eventSchedule.forEach(event => {
+                    const eventStart = parseDate(event.startDate).getTime();
+                    const eventEnd = parseDate(event.endDate).getTime();
+                    
+                    if (currentDay >= eventStart && currentDay <= eventEnd) {
+                        if (filterValue === 'all' || filterValue === event.spaceId) {
+                            const eventDiv = document.createElement('div');
+                            eventDiv.className = 'calendar-day-event';
+                            eventDiv.title = `${event.activityPurpose} (${getEventSpaceById(event.spaceId).name}) ${event.startTime}-${event.endTime}`;
+                            eventDiv.textContent = event.activityPurpose;
+                            dayCell.appendChild(eventDiv);
+                        }
+                    }
+                });
+                calendarGridDays.appendChild(dayCell);
+            }
+        }
+        
+        function renderAnalyticsView(period = 'week') { 
+            pendingReservationsAdmin.innerHTML = ''; 
+            const pending = reservations.filter(r => r.status === 'pending'); 
+            if (pending.length === 0) { 
+                pendingReservationsAdmin.innerHTML = '<p class="text-slate-500">No pending reservations.</p>'; 
+            } else { 
+                pending.forEach(res => { 
+                    const card = document.createElement('div'); 
+                    card.className = 'bg-slate-50 p-4 rounded-lg border flex justify-between items-center'; 
+                    card.innerHTML = `<div><p class="font-bold">${res.activityPurpose} - <span class="font-normal">${getEventSpaceById(res.spaceId).name}</span></p><p class="text-sm text-slate-600">${res.startDate} @ ${res.startTime} by ${res.user} (${res.department})</p></div><div class="flex gap-2"><button data-id="${res.id}" class="approve-btn bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600">Approve</button><button data-id="${res.id}" class="deny-btn bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600">Deny</button></div>`; 
+                    pendingReservationsAdmin.appendChild(card); 
+                }); 
+            } 
+            
+            // Analytics logic updated to handle date-based schedules (simplified to week for this mock)
+            analyticsContainer.innerHTML = ''; 
+            const spaceUsage = eventSpaces.map(space => ({ name: space.name, hours: eventSchedule.reduce((acc, e) => e.spaceId === space.id ? acc + (timeToMinutes(e.endTime) - timeToMinutes(e.startTime)) / 60 : acc, 0) })).filter(r => r.hours > 0).sort((a,b) => b.hours - a.hours);
+            if (spaceUsage.length === 0) { analyticsContainer.innerHTML = `<p class="text-slate-500">No event space usage data for this period.</p>`; return; } 
+            const maxHours = Math.max(...spaceUsage.map(r => r.hours), 1); 
+            let analyticsHTML = '<div class="space-y-2">'; 
+            spaceUsage.forEach(r => { const width = (r.hours / maxHours) * 100; analyticsHTML += `<div class="flex items-center"><div class="w-1/4 text-sm text-slate-600">${r.name}</div><div class="w-3/4 bg-slate-200 rounded-full h-5"><div class="chart-bar h-5" style="width: ${width}%;">${r.hours.toFixed(1)} hrs</div></div></div>`; }); 
+            analyticsHTML += '</div>'; 
+            analyticsContainer.innerHTML = analyticsHTML; 
+        }
+        
+        function populateEquipmentGrid() {
+            equipmentGrid.innerHTML = '';
+            equipmentList.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-slate-50';
+                
+                let inputHTML = '';
+                let checkboxID = '';
+                if (item.type === 'number') {
+                    inputHTML = `<input type="number" id="${item.id}" min="0" class="w-20 px-2 py-1 border border-slate-300 rounded-md shadow-sm hidden" placeholder="Qty">`;
+                }
+                else {
+                    checkboxID = `id="${item.id}"`; 
+                }
+                
+                div.innerHTML = `
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="checkbox" data-qty-id="${item.id}" class="eq-checkbox"> ${item.label}
+                    </label>
+                    ${inputHTML}
+                `;
+                equipmentGrid.appendChild(div);
+            });
+        }
+
+        function showReservationModal(spaceId = null) { 
+            reservationForm.reset();
+            
+            // Hide all quantity inputs
+            equipmentGrid.querySelectorAll('input[type="number"]').forEach(input => input.classList.add('hidden'));
+
+            const spaceSelect = reservationModal.querySelector('#space-id');
+            spaceSelect.innerHTML = '';
+            eventSpaces.forEach(s => {
+                spaceSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            });
+
+            if (spaceId) {
+                spaceSelect.value = spaceId;
+                reservationModal.querySelector('#modal-title').textContent = `Reserve ${getEventSpaceById(spaceId).name}`;
+            } else {
+                reservationModal.querySelector('#modal-title').textContent = 'Request an Event Space';
+            }
+            
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('start-date').value = today;
+            document.getElementById('end-date').value = today;
+            
+            showModal(reservationModal); 
+        }
+        
+        function processAiPrompt(prompt) { 
+            appendMessage(prompt, 'user'); 
+            aiPromptInput.value = ''; 
+            setTimeout(() => { 
+                let response = "I'm sorry, I don't understand. Please ask about event space availability, e.g., 'Is the gym free on Friday?'"; 
+                const keywords = { 'today': new Date().toISOString().split('T')[0], 'tomorrow': new Date(Date.now() + 86400000).toISOString().split('T')[0] };
+                let day = null;
+                
+                if (prompt.toLowerCase().includes('today')) day = keywords.today;
+                if (prompt.toLowerCase().includes('tomorrow')) day = keywords.tomorrow;
+                // Add more date parsing here...
+
+                if (day) {
+                    const timeMatch = prompt.match(/(\d{1,2})\s*(?::\s*(\d{2}))?\s*(am|pm)?/i); 
+                    if (timeMatch) { 
+                        let h = parseInt(timeMatch[1]); if (timeMatch[3]?.toLowerCase() === 'pm' && h < 12) h += 12; if (timeMatch[3]?.toLowerCase() === 'am' && h === 12) h = 0; 
+                        const time = `${String(h).padStart(2, '0')}:${String(timeMatch[2]||'00').padStart(2, '0')}`; 
+                        const checkDateTime = new Date(`${day}T${time}`).getTime();
+
+                        const availableSpaces = eventSpaces.filter(space => {
+                            return !eventSchedule.some(e => {
+                                const start = new Date(`${e.startDate}T${e.startTime}`).getTime();
+                                const end = new Date(`${e.endDate}T${e.endTime}`).getTime();
+                                return e.spaceId === space.id && checkDateTime >= start && checkDateTime < end;
+                            });
+                        });
+                        response = availableSpaces.length > 0 ? `On ${day} at ${time}, these event spaces are available:\n\n` + availableSpaces.map(s => `- ${s.name}`).join('\n') : `Sorry, no event spaces are available on ${day} at ${time}.`; 
+                    } else {
+                         response = `What time on ${day} are you asking about?`;
+                    }
+                } else if (prompt.toLowerCase().includes('available') || prompt.toLowerCase().includes('free')) { 
+                    response = `Sure, for what date and time are you asking?`; 
+                } 
+                appendMessage(response, 'ai'); 
+            }, 1200); 
+        }
+
+        function switchView(viewName) {
+            navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewName));
+            Object.values(views).forEach(v => v.classList.toggle('hidden', v.dataset.view !== viewName));
+        }
+
+        function setupUIForRole() {
+            const isAdmin = currentUser.role === 'admin';
+            adminNavSection.style.display = isAdmin ? 'block' : 'none';
+            const avatarUrl = isAdmin ? 'https://placehold.co/100x100/0ea5e9/ffffff?text=A' : `https://placehold.co/100x100/64748b/ffffff?text=${currentUser.username.charAt(0).toUpperCase()}`;
+            sidebarAvatar.src = avatarUrl;
+            headerAvatar.style.backgroundImage = `url(${avatarUrl})`;
+            sidebarUsername.textContent = currentUser.username;
+            dashboardTitle.textContent = isAdmin ? 'Welcome, Admin' : `Welcome, ${currentUser.username} (${currentUser.department})`;
+            
+            if (!isAdmin && document.querySelector('.nav-button.active').dataset.view === 'analytics') {
+                switchView('dashboard');
+            }
+            
+            // Populate calendar filter
+            calendarFilter.innerHTML = '<option value="all">All Spaces</option>';
+            eventSpaces.forEach(space => {
+                calendarFilter.innerHTML += `<option value="${space.id}">${space.name}</option>`;
+            });
+        }
+        
+        function stopApp() {
+            intervals.forEach(clearInterval);
+            intervals = [];
+        }
+
+        function startApp() {
+            stopApp(); 
+            setupUIForRole();
+            updateAllViews();
+            updateDateTime();
+            populateEquipmentGrid();
+            intervals.push(setInterval(updateDateTime, 1000));
+            intervals.push(setInterval(updateAllViews, 60000));
+        }
+
+        // --- EVENT LISTENERS ---
+        loginForm.addEventListener('submit', (e) => {
+            loginError.textContent = '';
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const user = Object.values(users).find(u => u.username === username && u.password === password);
+            if (user) {
+                currentUser = user;
+                loginPage.style.display = 'none';
+                appContainer.style.display = 'grid';
+                startApp();
+            } else {
+                loginError.textContent = 'Invalid username or password.';
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            stopApp();
+            currentUser = null;
+            loginPage.style.display = 'flex';
+            appContainer.style.display = 'none';
+            loginForm.reset();
+            loginError.textContent = '';
+        });
+
+        navButtons.forEach(button => { button.addEventListener('click', () => { const view = button.dataset.view; if(view === 'analytics' && currentUser.role !== 'admin') return; switchView(view); }); });
+        aiModalBtn.addEventListener('click', () => showModal(aiModal));
+        aiModalClose.addEventListener('click', () => hideModal(aiModal));
+        aiSubmitBtn.addEventListener('click', () => { if(aiPromptInput.value.trim()) processAiPrompt(aiPromptInput.value.trim()); });
+        aiPromptInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && aiPromptInput.value.trim()) processAiPrompt(aiPromptInput.value.trim()); });
+        cancelReservationBtn.addEventListener('click', () => hideModal(reservationModal));
+        notificationOkBtn.addEventListener('click', () => hideModal(notificationModal));
+        
+        filterTodayBtn.addEventListener('click', () => { if(currentUser.role === 'admin') { renderAnalyticsView('today'); filterTodayBtn.classList.add('active'); filterWeekBtn.classList.remove('active'); } });
+        filterWeekBtn.addEventListener('click', () => { if(currentUser.role === 'admin') { renderAnalyticsView('week'); filterWeekBtn.classList.add('active'); filterTodayBtn.classList.remove('active'); } });
+        
+        // New Calendar Listeners
+        calendarPrevBtn.addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() - 1);
+            renderFullCalendar();
+        });
+        calendarNextBtn.addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() + 1);
+            renderFullCalendar();
+        });
+        calendarFilter.addEventListener('change', () => {
+            renderFullCalendar();
+        });
+
+        // New Equipment Form Listener
+        equipmentGrid.addEventListener('change', (e) => {
+            if (e.target.classList.contains('eq-checkbox')) {
+                const qtyInput = document.getElementById(e.target.dataset.qtyId);
+                if (qtyInput) {
+                    qtyInput.classList.toggle('hidden', !e.target.checked);
+                    if (!e.target.checked) {
+                        qtyInput.value = ''; // Clear qty if unchecked
+                    }
+                }
+            }
+        });
+
+        reservationForm.addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            
+            // 1. Get the Participant Type (Radio Button)
+            const participantTypeRadio = document.querySelector('input[name="participant-type"]:checked');
+            
+            // 2. Gather Equipment Data
+            // We loop through your existing equipmentList to see what was checked/typed
+            const equipment = {};
+            equipmentList.forEach(item => {
+                const el = document.getElementById(item.id);
+
+                // --- SAFETY CHECK ---
+                if (!el) return; // If element is missing, skip it (don't crash!)
+
+                if (el.type === 'checkbox' && el.checked) {
+                    equipment[item.id] = true;
+                } else if (el.type === 'number') {
+                    const val = parseInt(el.value);
+                    if (val > 0) {
+                        equipment[item.id] = val;
+                    }
+                }
+            });
+            
+            // 3. Build the Data Object
+            // Note: The key names here match what app.py expects!
+            const payload = {
+                activityPurpose: document.getElementById('event-name').value,
+                division: document.getElementById('division').value,
+                attendees: document.getElementById('attendees').value,
+                participantType: participantTypeRadio ? participantTypeRadio.value : '',
+                participantOther: document.getElementById('participant-other').value,
+                classification: document.getElementById('classification').value,
+        
+                spaceId: document.getElementById('space-id').value,
+                startDate: document.getElementById('start-date').value,
+                endDate: document.getElementById('end-date').value,
+                startTime: document.getElementById('start-time').value,
+                endTime: document.getElementById('end-time').value,
+        
+                equipment: equipment
+            };
+
+            // 4. Send to Python (The Backend Connection) 🚀
+            try {
+                const response = await fetch('/create_reservation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+        
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Success! 
+                    showNotification('Request Sent Successfully! ID: ' + result.id);
+                    hideModal(reservationModal);
+            
+                    // Wait 1 second and then reload so the new reservation appears in the dashboard
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    // Error from Python (e.g., Database locked)
+                    showNotification('Error: ' + (result.message || 'Could not save reservation.'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('System Error: Could not connect to the server.');
+            }
+        });
+        
+        pendingReservationsAdmin.addEventListener('click', (e) => { 
+            const target = e.target.closest('.approve-btn, .deny-btn');
+            if (!target || currentUser.role !== 'admin') return; 
+            const resId = parseInt(target.dataset.id);
+            const res = reservations.find(r => r.id === resId); 
+            if (!res) return;
+
+            if (target.classList.contains('approve-btn')) { 
+                eventSchedule.push({ ...res, status: 'approved' }); 
+                reservations = reservations.filter(r => r.id !== resId); 
+                showNotification(`Reservation for ${getEventSpaceById(res.spaceId).name} approved!`); 
+            } else if (target.classList.contains('deny-btn')) { 
+                reservations = reservations.filter(r => r.id !== resId); 
+                showNotification(`Reservation denied.`); 
+            }
+            updateAllViews();
+        });
+        
+        myReservationsList.addEventListener('click', (e) => {
+            const target = e.target.closest('.print-request-btn');
+            if (!target) return;
+            
+            const resId = parseInt(target.dataset.id);
+            const reservation = eventSchedule.find(r => r.id === resId);
+            if (!reservation) {
+                console.error("Could not find approved reservation to print");
+                return;
+            }
+            
+            // Populate Print Modal
+            document.getElementById('print-activity').textContent = reservation.activityPurpose;
+            document.getElementById('print-department').textContent = reservation.department;
+            document.getElementById('print-division').textContent = reservation.division || 'N/A';
+            document.getElementById('print-attendees').textContent = reservation.attendees || 'N/A';
+            let participants = reservation.participantType;
+            if (participants === 'Others' && reservation.participantOther) {
+                participants = `Others: ${reservation.participantOther}`;
+            }
+            document.getElementById('print-participants').textContent = participants || 'N/A';
+            document.getElementById('print-classification').textContent = reservation.classification || 'N/A';
+            document.getElementById('print-date-filed').textContent = reservation.dateFiled || 'N/A';
+            
+            document.getElementById('print-venue').textContent = getEventSpaceById(reservation.spaceId).name;
+            document.getElementById('print-start-date').textContent = reservation.startDate;
+            document.getElementById('print-end-date').textContent = reservation.endDate;
+            document.getElementById('print-start-time').textContent = reservation.startTime;
+            document.getElementById('print-end-time').textContent = reservation.endTime;
+            
+            const eqList = document.getElementById('print-equipment-list');
+            eqList.innerHTML = '';
+            if (reservation.equipment) {
+                equipmentList.forEach(item => {
+                    const val = reservation.equipment[item.id];
+                    if (val) {
+                        const li = document.createElement('li');
+                        li.textContent = `[${typeof val === 'boolean' ? '✓' : val}] ${item.label}`;
+                        eqList.appendChild(li);
+                    }
+                });
+            }
+            if(eqList.innerHTML === '') {
+                eqList.innerHTML = '<li>No equipment requested.</li>';
+            }
+            
+            showModal(printModal);
+        });
+        
+        printButton.addEventListener('click', () => {
+            window.print();
+        });
+        printModalClose.addEventListener('click', () => hideModal(printModal));
+
+        // --- INITIALIZATION ---
+        // App does not start until login
+    });
+</script>
+
+</body>
+</html>
