@@ -702,45 +702,18 @@ END OF SYSTEM INSTRUCTION.
 `;
         
         // --- MOCK DATABASES ---
-        const users = { 
-            admin: { username: 'admin', password: 'admin123', role: 'admin', department: 'Administration' }, 
-            user: { username: 'user', password: 'user123', role: 'user', department: 'College of Computer Studies' } 
-        };
-        
-        let eventSpaces = [ 
-            { id: 'pat', name: 'Performing Arts Theatre', capacity: 1500, usualActivity: 'Concerts, Graduation Ceremonies, Large Plays', description: 'A state-of-the-art facility designed for major university events, featuring professional lighting and sound systems.' }, 
-            { id: 'mua', name: 'Medical University Auditorium', capacity: 800, usualActivity: 'Lectures, Medical Seminars, Academic Symposia', description: 'A large, tiered auditorium ideal for professional academic and medical conferences.' },
-            { id: 'quad', name: 'Quadrangle', capacity: 5000, usualActivity: 'School Fairs, Food Stalls, Outdoor Exhibitions', description: 'The central open field, perfect for large-scale outdoor student gatherings and school-wide events.' },
-            { id: 'apark', name: 'Achievers Park', capacity: 300, usualActivity: 'Quiet Study, Small Gatherings, Relaxation', description: 'A landscaped area with benches and pathways, suitable for outdoor classes and informal meetings.' },
-            { id: 'chapel', name: 'Campus Chapel', capacity: 200, usualActivity: 'Mass, Religious Services, Weddings', description: 'A solemn and quiet space for spiritual activities and religious events.' },
-            { id: 'oval', name: 'Oval', capacity: 10000, usualActivity: 'Athletic Training, Track and Field Meets, Large Outdoor Concerts', description: 'The main sports field with a running track, used primarily for large athletic and physical activities.' },
-            { id: 'gym', name: 'GYM and Sports Center', capacity: 5000, usualActivity: 'Basketball/Volleyball Games, Indoor Sports Fest, Exams', description: 'A versatile indoor sports complex that can be converted for major exams or indoor conventions.' }, 
-            { id: 'spool', name: 'Swimming Pool', capacity: 100, usualActivity: 'Swimming Competitions, Training, Aquatic Events', description: 'The university pool area, restricted mostly to sports and academic aquatic activities.' },
-            { id: 'maud', name: 'Mini Auditorium', capacity: 250, usualActivity: 'Student Organization Meetings, Film Viewings, Small Seminars', description: 'A smaller, more intimate setting suitable for group discussions and presentations.' }
-        ];
+        let eventSpaces = {{ rooms_js | safe }};
         
         // Mock eventSchedule now only holds *fully* approved events (Status: approved)
         // NOTE: eventSchedule holds FINALIZED events that occupy space on the calendar.
-        let eventSchedule = [ 
-            { id: 1, spaceId: 'pat', activityPurpose: 'University Play Rehearsals', startDate: '2025-12-05', endDate: '2025-12-05', startTime: '13:00', endTime: '17:00', user: 'admin', department: 'Arts Dept', status: 'approved', personInCharge: 'Jane Doe', contactNumber: '09123456789', equipment: { tables: 0, chairs: 50, 'eq-sound-system': true }, classification: 'Co-curricular', division: 'Arts', attendees: 20, participantType: 'Student', conceptPaperFilename: 'PlayRehearsalConcept.pdf', finalFormFilename: 'PlayRehearsalForm.pdf', finalFormUploaded: true }, 
-            { id: 2, spaceId: 'gym', activityPurpose: 'Varsity Basketball Practice', startDate: '2025-12-05', endDate: '2025-12-05', startTime: '15:00', endTime: '18:00', user: 'admin', department: 'Sports Dept', status: 'approved', personInCharge: 'John Smith', contactNumber: '09987654321', equipment: {}, classification: 'Extra-curricular', division: 'Sports', attendees: 50, participantType: 'Student', conceptPaperFilename: 'BasketballPracticePlan.pdf', finalFormFilename: 'BasketballPracticeForm.pdf', finalFormUploaded: true },
-            { id: 3, spaceId: 'maud', activityPurpose: 'Tech Seminar', startDate: '2025-12-06', endDate: '2025-12-06', startTime: '09:00', endTime: '12:00', user: 'user', department: 'College of Computer Studies', status: 'approved', personInCharge: 'User Default', contactNumber: '09000000000', equipment: { 'eq-lcd-projector': true, 'eq-microphone': 2, 'eq-speaker': 2 }, classification: 'Curricular', division: 'CCS', attendees: 100, participantType: 'Student', conceptPaperFilename: 'TechSeminarProposal.pdf', finalFormFilename: 'TechSeminarForm.pdf', finalFormUploaded: true }
-        ];
+        let eventSchedule = {{ schedule_js | safe }};
         
         // Mock reservations now include 'pending', 'concept-approved', and 'denied' statuses.
         // NOTE: reservations holds PENDING and DENIED REQUESTS.
-        let reservations = [ 
-            { id: 101, spaceId: 'maud', activityPurpose: 'Org Leadership Seminar', startDate: '2025-12-07', endDate: '2025-12-07', startTime: '10:00', endTime: '12:00', status: 'pending', user: 'user', department: 'College of Computer Studies', division: 'CCS', attendees: 50, participantType: 'Student', classification: 'Co-curricular', dateFiled: '2025-12-01', personInCharge: 'User Default', contactNumber: '09000000000', equipment: { 'eq-tables': 2, 'eq-chairs': 50, 'eq-ph-flag': true, 'eq-lcd-projector': true, 'eq-microphone': 2, 'eq-speaker': 2, 'eq-laptop': 1 }, conceptPaperFilename: 'SeminarConceptPaper.pdf', finalFormFilename: 'OrgSeminarForm.pdf', finalFormUploaded: false }, 
-            { id: 102, spaceId: 'gym', activityPurpose: 'Sports Fest Planning', startDate: '2025-12-09', endDate: '2025-12-09', startTime: '15:00', endTime: '17:00', status: 'concept-approved', user: 'user', department: 'College of Computer Studies', division: 'CCS', attendees: 30, participantType: 'Student', classification: 'Extra-curricular', dateFiled: '2025-12-01', personInCharge: 'User Default', contactNumber: '09000000000', equipment: { 'eq-tables': 5, 'eq-chairs': 30 }, conceptPaperFilename: 'SportsFestConcept.pdf', finalFormFilename: 'SportsFestForm.pdf', finalFormUploaded: true }, // Example of Concept Approved & Form Uploaded (Awaiting Final Approval)
-            { id: 103, spaceId: 'pat', activityPurpose: 'General Assembly', startDate: '2025-12-12', endDate: '2025-12-12', startTime: '08:00', endTime: '12:00', status: 'denied', denialReason: 'Date conflict with Administration annual planning event.', user: 'admin', department: 'Administration', division: 'Admin', attendees: 200, participantType: 'Employee', classification: 'Institutional', dateFiled: '2025-12-01', personInCharge: 'Admin Default', contactNumber: '09000000001', equipment: {}, conceptPaperFilename: 'AssemblyConcept.pdf', finalFormFilename: 'AssemblyForm.pdf', finalFormUploaded: false }
-            , // Awaiting Upload Example (Under Review)
-            { id: 104, spaceId: 'mua', activityPurpose: 'Medicine Symposium', startDate: '2025-12-15', endDate: '2025-12-15', startTime: '14:00', endTime: '17:00', status: 'concept-approved', user: 'admin', department: 'Medical Dept', division: 'Med', attendees: 100, participantType: 'Employee', classification: 'Curricular', dateFiled: '2025-12-01', personInCharge: 'Dr. Cruz', contactNumber: '09170001111', equipment: { 'eq-lcd-projector': true, 'eq-microphone': 2 }, conceptPaperFilename: 'SymposiumConcept.pdf', finalFormFilename: 'SymposiumForm.pdf', finalFormUploaded: false }
-        ];
+        let reservations = {{ reservations_js | safe }};
         
         // NEW MOCK ARCHIVE ARRAY
-        let archive = [
-             { id: 201, spaceId: 'apark', activityPurpose: 'Student Protest', startDate: '2025-11-05', endDate: '2025-11-05', startTime: '10:00', endTime: '12:00', user: 'user', department: 'Students', status: 'denied', denialReason: 'Inappropriate use of facility.', classification: 'Extra-curricular', dateFiled: '2025-11-01', personInCharge: 'Student Org', contactNumber: '09123456789', equipment: {}, conceptPaperFilename: 'ProtestConcept.pdf', finalFormFilename: '', finalFormUploaded: false, type: 'request', archivedAt: '2025-11-01' }
-        ];
+        let archive = {{ archive_js | safe }};
 
         // --- UI ELEMENT GRAB ---
         const loginPage = document.getElementById('login-page');
