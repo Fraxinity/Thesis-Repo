@@ -124,18 +124,34 @@ def index():
 # 2. LOGIN/LOGOUT ROUTES
 @app.route('/login', methods=['POST'])
 def login():
-    # Get data from the form (we will update the HTML to send this)
+    # 1. Get data
     username = request.form.get('username')
     password = request.form.get('password')
+    
+    # DEBUG PRINT: What did the form send?
+    print(f"🕵️ DEBUG: Login Attempt -> User: {username} | Pass: {password}")
 
+    # 2. Find user
     user = User.query.filter_by(username=username).first()
-
-    if user and user.check_password(password):
-        login_user(user)
-        return redirect(url_for('index'))
+    
+    # DEBUG PRINT: Did we find them?
+    if user:
+        print(f"✅ DEBUG: Found User in DB: ID={user.id}, Role={user.role}")
+        # Check password
+        is_correct = user.check_password(password)
+        print(f"❓ DEBUG: Password Correct? {is_correct}")
+        
+        if is_correct:
+            login_user(user)
+            print("🎉 DEBUG: User logged in! Redirecting...")
+            return redirect(url_for('index'))
     else:
-        flash('Invalid username or password')
-        return redirect(url_for('index'))
+        print("❌ DEBUG: User NOT found in database.")
+
+    # 3. If we get here, it failed
+    print("⛔ DEBUG: Login Failed. Redirecting back to start.")
+    flash('Invalid username or password')
+    return redirect(url_for('index'))
 
 @app.route('/logout')
 @login_required
