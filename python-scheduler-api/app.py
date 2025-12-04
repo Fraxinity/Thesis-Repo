@@ -2,6 +2,7 @@ import os
 import json
 import requests # Need this for Gemini API
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from models import db, User, Room, Reservation 
@@ -291,6 +292,5 @@ def setup():
         <a href='/'>Go to Dashboard</a>
         """
 
-# 6. START THE APP
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
