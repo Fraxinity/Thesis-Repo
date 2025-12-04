@@ -33,6 +33,75 @@ login_manager.login_view = 'login' # Redirect here if user isn't logged in
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
+def get_frontend_data():
+    """
+    Fetches all data from SQL and converts it to the exact JSON structure 
+    the Frontend JavaScript expects.
+    """
+    
+    # 1. ROOMS
+    rooms = Room.query.all()
+    rooms_data = []
+    for r in rooms:
+        rooms_data.append({
+            "id": r.id, # Note: Ensure your HTML uses ID or Code consistently. 
+            "name": r.name,
+            "capacity": r.capacity,
+            "usualActivity": r.usual_activity,
+            "description": r.description
+        })
+
+    # 2. ALL RESERVATIONS (Active & Archived)
+    all_res = Reservation.query.all()
+    reservations_data = [] # For pending/denied/concept-approved
+    schedule_data = []     # For fully approved events
+    archive_data = []      # For archived items
+
+    for r in all_res:
+        # Convert equipment string back to dict
+        eq = r.get_equipment()
+        
+        # Build the object
+        res_obj = {
+            "id": r.id,
+            "spaceId": r.room_id,
+            "activityPurpose": r.activity_purpose,
+            "startDate": r.start_time.strftime('%Y-%m-%d'),
+            "endDate": r.end_time.strftime('%Y-%m-%d'),
+            "startTime": r.start_time.strftime('%H:%M'),
+            "endTime": r.end_time.strftime('%H:%M'),
+            "user": r.requester.username,
+            "department": r.requester.department,
+            "status": r.status,
+            "division": r.division,
+            "attendees": r.attendees,
+            "participantType": r.participant_type,
+            "participantOther": r.participant_details,
+            "classification": r.classification,
+            "personInCharge": r.person_in_charge,
+            "contactNumber": r.contact_number,
+            "dateFiled": r.date_filed.strftime('%Y-%m-%d'),
+            "equipment": eq,
+            "conceptPaperFilename": r.concept_paper_filename,
+            "finalFormFilename": r.final_form_filename,
+            "finalFormUploaded": r.final_form_uploaded,
+            "denialReason": r.denial_reason,
+            "archivedAt": r.archived_at.strftime('%Y-%m-%d') if r.archived_at else None
+        }
+
+        # SORTING HAT: Where does this reservation go?
+        if r.archived_at:
+            res_obj['status'] = 'archived' # Override status for frontend logic
+            archive_data.append(res_obj)
+        elif r.status == 'approved':
+            res_obj['eventName'] = r.activity_purpose
+            schedule_data.append(res_obj)
+        else:
+            # Pending, Concept-Approved, Denied go here
+            reservations_data.append(res_obj)
+
+    return rooms_data, reservations_data, schedule_data, archive_data
+
 # --- ROUTES ---
     
 @app.route('/')
