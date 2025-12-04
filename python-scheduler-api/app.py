@@ -1,18 +1,26 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from models import db, User, Room, Reservation # Importing from the models.py file we made
-
-import json
 import os
+import json
+import requests # Need this for Gemini API
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from werkzeug.utils import secure_filename
+from datetime import datetime
+from models import db, User, Room, Reservation 
 
 app = Flask(__name__)
 
-# --- CONFIGURATION ---
-# Secret key is needed for session security (keep this secret in real life!)
+# CONFIG
 app.config['SECRET_KEY'] = 'thesis-secret-key-123'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///school.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# UPLOAD CONFIG (New!)
+UPLOAD_FOLDER = 'static/uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True) # Auto-create folder
+
+# AI CONFIG (New!)
+GEMINI_API_KEY = "AIzaSyCj8u8zcuA0r42G2UrI1hwJyX0ABSn2ySI" # Move the key from HTML to here!
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
 
 # Initialize extensions
 db.init_app(app)
@@ -68,38 +76,116 @@ def logout():
 @app.route('/setup')
 def setup():
     with app.app_context():
+        # 1. Reset the database (Wipes old data so you start fresh)
+        db.drop_all()
         db.create_all()
-        
-        # 1. Create Users
-        if not User.query.filter_by(username='admin').first():
-            admin = User(username='admin', role='admin', department='Administration')
-            admin.set_password('admin123')
-            db.session.add(admin)
-            
-            user = User(username='CCS', role='student', department='College of Computer Studies')
-            user.set_password('user123')
-            db.session.add(user)
-            
 
-        # 2. Create Rooms (From your HTML Event Spaces)
-        if not Room.query.first():
-            rooms_list = [
-                {"name": "Performing Arts Theatre", "capacity": 500},
-                {"name": "Medical University Auditorium", "capacity": 300},
-                {"name": "Quadrangle", "capacity": 1000},
-                {"name": "Achievers Park", "capacity": 200},
-                {"name": "Campus Chapel", "capacity": 100},
-                {"name": "Oval", "capacity": 2000},
-                {"name": "GYM and Sports Center", "capacity": 800},
-                {"name": "Swimming Pool", "capacity": 50},
-                {"name": "Mini Auditorium", "capacity": 150}
-            ]
-            for r in rooms_list:
-                new_room = Room(name=r['name'], capacity=r['capacity'])
-                db.session.add(new_room)
+        # 2. Define your Department Accounts
+        users_to_add = [
+            # --- ADMIN (The Superuser) ---
+            {'user': 'admin', 'pass': 'admin123', 'role': 'admin', 'dept': 'Administration'},
+            
+            # --- STUDENT REPRESENTATIVES (Requesters) ---
+            {'user': 'ccs', 'pass': '1234', 'role': 'student', 'dept': 'College of Computer Studies'},
+            {'user': 'cas', 'pass': '1234', 'role': 'student', 'dept': 'College of Arts & Sciences'},
+            {'user': 'eng',  'pass': '1234', 'role': 'student', 'dept': 'College of Engineering'},
+            {'user': 'avi', 'pass': '1234', 'role': 'student', 'dept': 'College of Nursing'},
+        ]
+
+        for u in users_to_add:
+            new_user = User(username=u['user'], role=u['role'], department=u['dept'])
+            new_user.set_password(u['pass'])
+            db.session.add(new_user)
+            print(f" -> Added Account: {u['user']}")
+
+        # 3. CREATE FACILITIES
+        rooms_list = [
+            {
+                "code": "pat", 
+                "name": "Performing Arts Theatre", 
+                "cap": 1500, 
+                "act": "Concerts, Graduation Ceremonies, Large Plays", 
+                "desc": "A state-of-the-art facility designed for major university events, featuring professional lighting and sound systems."
+            },
+            {
+                "code": "mua", 
+                "name": "Medical University Auditorium", 
+                "cap": 800, 
+                "act": "Lectures, Medical Seminars, Academic Symposia", 
+                "desc": "A large, tiered auditorium ideal for professional academic and medical conferences."
+            },
+            {
+                "code": "quad", 
+                "name": "Quadrangle", 
+                "cap": 5000, 
+                "act": "School Fairs, Food Stalls, Outdoor Exhibitions", 
+                "desc": "The central open field, perfect for large-scale outdoor student gatherings and school-wide events."
+            },
+            {
+                "code": "apark", 
+                "name": "Achievers Park", 
+                "cap": 300, 
+                "act": "Quiet Study, Small Gatherings, Relaxation", 
+                "desc": "A landscaped area with benches and pathways, suitable for outdoor classes and informal meetings."
+            },
+            {
+                "code": "chapel", 
+                "name": "Campus Chapel", 
+                "cap": 200, 
+                "act": "Mass, Religious Services, Weddings", 
+                "desc": "A solemn and quiet space for spiritual activities and religious events."
+            },
+            {
+                "code": "oval", 
+                "name": "Oval", 
+                "cap": 10000, 
+                "act": "Athletic Training, Track and Field Meets, Large Outdoor Concerts", 
+                "desc": "The main sports field with a running track, used primarily for large athletic and physical activities."
+            },
+            {
+                "code": "gym", 
+                "name": "GYM and Sports Center", 
+                "cap": 5000, 
+                "act": "Basketball/Volleyball Games, Indoor Sports Fest, Exams", 
+                "desc": "A versatile indoor sports complex that can be converted for major exams or indoor conventions."
+            },
+            {
+                "code": "spool", 
+                "name": "Swimming Pool", 
+                "cap": 100, 
+                "act": "Swimming Competitions, Training, Aquatic Events", 
+                "desc": "The university pool area, restricted mostly to sports and academic aquatic activities."
+            },
+            {
+                "code": "maud", 
+                "name": "Mini Auditorium", 
+                "cap": 250, 
+                "act": "Student Organization Meetings, Film Viewings, Small Seminars", 
+                "desc": "A smaller, more intimate setting suitable for group discussions and presentations."
+            }
+        ]
+
+        for r in rooms_list:
+            new_room = Room(
+                code=r['code'], # Note: Ensure your Room model has this column!
+                name=r['name'], 
+                capacity=r['cap'], 
+                usual_activity=r['act'], 
+                description=r['desc']
+            )
+            db.session.add(new_room)
+            print(f" -> Added Facility: {r['name']}")
 
         db.session.commit()
-        return "Database Setup Complete! Users and Rooms match your HTML."
+        return f"""
+        <h1>Setup Complete! 🚀</h1>
+        <p>Database has been wiped and re-seeded with:</p>
+        <ul>
+            <li>{len(users_to_add)} Users created (Admin, Reps, Staff)</li>
+            <li>{len(rooms_list)} Facilities added (PAT, Gym, Oval, etc.)</li>
+        </ul>
+        <a href='/'>Go to Dashboard</a>
+        """
     
 @app.route('/api/login', methods=['POST'])
 def api_login():
