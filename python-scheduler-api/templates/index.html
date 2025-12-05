@@ -35,9 +35,18 @@
         .message.user .bubble { background: #0ea5e9; color: white; }
         .bubble { display: inline-block; padding: 0.75rem 1rem; border-radius: 1rem; max-width: 80%; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
-        .calendar-day { aspect-ratio: 1; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.875rem; }
+        .calendar-day { aspect-ratio: 1; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.875rem; position: relative; }
         .calendar-day.has-event { background: #e0f2fe; border-color: #0ea5e9; cursor: pointer; }
-        .equipment-item { display: flex; gap: 1rem; margin-bottom: 0.5rem; }
+        .calendar-day .event-name { font-size: 0.65rem; color: #0369a1; margin-top: 0.25rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .participant-btn { padding: 0.5rem 1rem; border: 2px solid #cbd5e1; border-radius: 0.5rem; background: white; cursor: pointer; transition: all 0.2s; }
+        .participant-btn.active { background: #0ea5e9; color: white; border-color: #0ea5e9; }
+        .equipment-checkbox { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; margin-bottom: 0.5rem; }
+        .equipment-checkbox input[type="checkbox"]:checked + label { font-weight: 600; color: #0ea5e9; }
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -125,10 +134,36 @@
                 <div id="dashboard-view" data-view="dashboard">
                     <h2 class="text-2xl font-bold text-slate-800 mb-2" id="dashboard-title">Welcome</h2>
                     <p class="text-slate-500 mb-8" id="current-datetime">Loading...</p>
-                    <div class="bg-white p-8 rounded-xl border border-slate-200">
-                        <h3 class="text-2xl font-bold text-slate-800 mb-4">Available Facilities</h3>
-                        <div id="facilities-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div class="text-center py-8 text-slate-500">Loading facilities...</div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Available Today</p>
+                                    <p class="text-3xl font-bold text-sky-600" id="available-today">0</p>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-sky-200" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Active Activities</p>
+                                    <p class="text-3xl font-bold text-green-600" id="active-activities">0</p>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-200" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Approved Reservations</p>
+                                    <p class="text-3xl font-bold text-purple-600" id="approved-count">0</p>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-purple-200" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -209,14 +244,19 @@
                         <input type="number" name="attendees" required class="w-full px-3 py-2 border rounded-lg">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Participant Type</label>
-                        <select name="participant_type" required class="w-full px-3 py-2 border rounded-lg">
-                            <option value="students">Students</option>
-                            <option value="faculty">Faculty</option>
-                            <option value="mixed">Mixed</option>
-                            <option value="external">External</option>
-                        </select>
+                        <label class="block text-sm font-medium mb-2">Participant Type</label>
+                        <div class="flex gap-2">
+                            <button type="button" class="participant-btn" data-type="students">Students</button>
+                            <button type="button" class="participant-btn" data-type="employees">Employees</button>
+                            <button type="button" class="participant-btn" data-type="others">Others</button>
+                        </div>
+                        <input type="hidden" name="participant_type" id="participant-type-input" required>
                     </div>
+                </div>
+
+                <div class="mb-4" id="others-input-container" style="display: none;">
+                    <label class="block text-sm font-medium mb-1">Specify Others</label>
+                    <input type="text" id="others-specify" class="w-full px-3 py-2 border rounded-lg" placeholder="Please specify participant type">
                 </div>
 
                 <div class="mb-4">
@@ -228,10 +268,12 @@
                     <div>
                         <label class="block text-sm font-medium mb-1">Classification</label>
                         <select name="classification" required class="w-full px-3 py-2 border rounded-lg">
-                            <option value="academic">Academic</option>
-                            <option value="cultural">Cultural</option>
-                            <option value="sports">Sports</option>
-                            <option value="social">Social</option>
+                            <option value="">Select Classification</option>
+                            <option value="institutional">Institutional</option>
+                            <option value="curricular">Curricular</option>
+                            <option value="co-curricular">Co-Curricular</option>
+                            <option value="extra-curricular">Extra-curricular</option>
+                            <option value="outside-group">Outside Group</option>
                         </select>
                     </div>
                     <div>
@@ -245,21 +287,95 @@
                     <input type="tel" name="contact_number" required class="w-full px-3 py-2 border rounded-lg">
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-3 gap-4 mb-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Start Date & Time</label>
-                        <input type="datetime-local" name="start_time" required class="w-full px-3 py-2 border rounded-lg">
+                        <label class="block text-sm font-medium mb-1">Date</label>
+                        <input type="date" id="reservation-date" name="reservation_date" required class="w-full px-3 py-2 border rounded-lg">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">End Date & Time</label>
-                        <input type="datetime-local" name="end_time" required class="w-full px-3 py-2 border rounded-lg">
+                        <label class="block text-sm font-medium mb-1">Start Time</label>
+                        <input type="time" id="start-time" name="start_time_only" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">End Time</label>
+                        <input type="time" id="end-time" name="end_time_only" required class="w-full px-3 py-2 border rounded-lg">
                     </div>
                 </div>
+                <p id="time-error" class="text-red-500 text-sm mb-4" style="display: none;">End time must be after start time</p>
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2">Equipment Needed</label>
-                    <div id="equipment-list"></div>
-                    <button type="button" id="add-equipment" class="text-sky-500 text-sm mt-2">+ Add Equipment</button>
+                    <div class="grid grid-cols-2 gap-2" id="equipment-checkboxes">
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-tables" value="Tables">
+                            <label for="eq-tables">Tables</label>
+                            <input type="number" id="eq-tables-qty" min="1" placeholder="Qty" class="w-16 px-2 py-1 border rounded ml-auto" style="display:none;">
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-chairs" value="Chairs">
+                            <label for="eq-chairs">Chairs</label>
+                            <input type="number" id="eq-chairs-qty" min="1" placeholder="Qty" class="w-16 px-2 py-1 border rounded ml-auto" style="display:none;">
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-laptop" value="Laptop">
+                            <label for="eq-laptop">Laptop</label>
+                            <input type="number" id="eq-laptop-qty" min="1" placeholder="Qty" class="w-16 px-2 py-1 border rounded ml-auto" style="display:none;">
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-microphone" value="Microphone">
+                            <label for="eq-microphone">Microphone</label>
+                            <input type="number" id="eq-microphone-qty" min="1" placeholder="Qty" class="w-16 px-2 py-1 border rounded ml-auto" style="display:none;">
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-speaker" value="Speaker">
+                            <label for="eq-speaker">Speaker</label>
+                            <input type="number" id="eq-speaker-qty" min="1" placeholder="Qty" class="w-16 px-2 py-1 border rounded ml-auto" style="display:none;">
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-ph-flag" value="PH Flag">
+                            <label for="eq-ph-flag">PH Flag</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-lcd" value="LCD Projector">
+                            <label for="eq-lcd">LCD Projector</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-camera" value="Still Camera">
+                            <label for="eq-camera">Still Camera</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-podium" value="Podium">
+                            <label for="eq-podium">Podium</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-college-flag" value="College Flag">
+                            <label for="eq-college-flag">College Flag</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-white-screen" value="White Screen">
+                            <label for="eq-white-screen">White Screen</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-video-screen" value="Video Screen">
+                            <label for="eq-video-screen">Video Screen</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-uni-flag" value="University Flag">
+                            <label for="eq-uni-flag">University Flag</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-tv" value="TV">
+                            <label for="eq-tv">TV</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-sound" value="Sound System">
+                            <label for="eq-sound">Sound System</label>
+                        </div>
+                        <div class="equipment-checkbox">
+                            <input type="checkbox" id="eq-light" value="Light Setup">
+                            <label for="eq-light">Light Setup</label>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-6">
@@ -275,7 +391,27 @@
         </div>
     </div>
 
-    <!-- Reservation Details Modal -->
+    <!-- View & Print Modal -->
+    <div id="view-print-modal" class="modal-overlay">
+        <div class="modal-content max-w-4xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Reservation Form</h3>
+                <button id="print-form-btn" class="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600">Print Form</button>
+            </div>
+            <div id="print-area" class="border border-slate-300 p-8 rounded-lg bg-white">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold">VacanSee Reservation Form</h2>
+                    <p class="text-sm text-slate-600">Campus Event Space Reservation</p>
+                </div>
+                <div id="form-content"></div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button id="close-view-print" class="flex-1 px-6 py-2 border rounded-lg hover:bg-slate-100">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reservation Details Modal (Admin) -->
     <div id="details-modal" class="modal-overlay">
         <div class="modal-content">
             <div id="details-content"></div>
@@ -298,6 +434,7 @@
     <div id="upload-modal" class="modal-overlay">
         <div class="modal-content max-w-md">
             <h3 class="text-xl font-bold mb-4">Upload Final Form</h3>
+            <p class="text-sm text-slate-600 mb-4">Please upload the signed final form (PDF)</p>
             <form id="upload-form">
                 <input type="file" name="final_form" accept=".pdf" required class="w-full px-3 py-2 border rounded-lg mb-4">
                 <div class="flex gap-3">
@@ -354,31 +491,47 @@
         var currentMonth = new Date().getMonth();
         var currentYear = new Date().getFullYear();
         
-        // UI Elements
-        var loginPage = document.getElementById('login-page');
-        var appContainer = document.getElementById('app-container');
-        var loginForm = document.getElementById('login-form');
-        var loginError = document.getElementById('login-error');
-        var logoutBtn = document.getElementById('logout-btn');
-        var navButtons = document.querySelectorAll('.nav-button');
-        var reservationModal = document.getElementById('reservation-modal');
-        var reservationForm = document.getElementById('reservation-form');
-        var detailsModal = document.getElementById('details-modal');
-        var denialModal = document.getElementById('denial-modal');
-        var uploadModal = document.getElementById('upload-modal');
-        var uploadForm = document.getElementById('upload-form');
-        var notificationModal = document.getElementById('notification-modal');
-        var chatButton = document.getElementById('chat-button');
-        var chatWindow = document.getElementById('chat-window');
-        var chatForm = document.getElementById('chat-form');
-        var chatInput = document.getElementById('chat-input');
-        var chatMessages = document.getElementById('chat-messages');
+        var equipmentWithQty = ['Tables', 'Chairs', 'Laptop', 'Microphone', 'Speaker'];
         
+        // Modal management
         function showModal(modal) { modal.classList.add('visible'); }
         function hideModal(modal) { modal.classList.remove('visible'); }
         function showNotification(message) { 
             document.getElementById('notification-message').textContent = message; 
-            showModal(notificationModal); 
+            showModal(document.getElementById('notification-modal')); 
+        }
+        
+        // Dashboard widgets
+        function updateDashboardWidgets() {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Available facilities today (all rooms minus those with approved reservations today)
+            var reservationsToday = allReservations.filter(function(r) {
+                if (r.status !== 'approved' || r.archived_at) return false;
+                var startDate = new Date(r.start_time);
+                startDate.setHours(0, 0, 0, 0);
+                return startDate.getTime() === today.getTime();
+            });
+            var occupiedRoomIds = reservationsToday.map(function(r) { return r.room_id; });
+            var availableToday = roomsFromBackend.filter(function(room) {
+                return !occupiedRoomIds.includes(room.id);
+            }).length;
+            document.getElementById('available-today').textContent = availableToday;
+            
+            // Active activities (approved reservations from today onwards)
+            var activeActivities = allReservations.filter(function(r) {
+                if (r.status !== 'approved' || r.archived_at) return false;
+                var startDate = new Date(r.start_time);
+                return startDate >= today;
+            }).length;
+            document.getElementById('active-activities').textContent = activeActivities;
+            
+            // Approved reservations for current user
+            var approvedCount = allReservations.filter(function(r) {
+                return r.status === 'approved' && r.user_id === (currentUser ? currentUser.id : null);
+            }).length;
+            document.getElementById('approved-count').textContent = approvedCount;
         }
         
         function updateDateTime() {
@@ -398,6 +551,7 @@
                     renderMyReservations();
                     renderArchive();
                     renderCalendar();
+                    updateDashboardWidgets();
                 }
             } catch (error) {
                 console.error('Error loading reservations:', error);
@@ -405,28 +559,15 @@
         }
         
         function renderFacilities() {
-            var facilitiesList = document.getElementById('facilities-list');
             var facilitiesCatalog = document.getElementById('facilities-catalog');
-            facilitiesList.innerHTML = '';
             facilitiesCatalog.innerHTML = '';
             
             if (!roomsFromBackend || roomsFromBackend.length === 0) {
-                facilitiesList.innerHTML = '<div class="col-span-3 text-center py-8 text-red-500">No facilities found. Run /setup first.</div>';
                 facilitiesCatalog.innerHTML = '<div class="col-span-3 text-center py-8 text-red-500">No facilities found. Run /setup first.</div>';
                 return;
             }
             
             roomsFromBackend.forEach(function(room) {
-                var dashCard = document.createElement('div');
-                dashCard.className = 'bg-slate-50 p-4 rounded-lg border border-slate-200 hover:border-sky-300 transition cursor-pointer';
-                dashCard.innerHTML = '<div class="flex justify-between items-start mb-2">' +
-                    '<h4 class="font-bold text-slate-800">' + room.name + '</h4>' +
-                    '<span class="text-xs bg-sky-100 text-sky-800 px-2 py-1 rounded-full">' + room.capacity + '</span>' +
-                    '</div>' +
-                    '<p class="text-sm text-slate-600 mb-2">' + (room.description || 'No description') + '</p>' +
-                    '<p class="text-xs text-slate-500">' + (room.usual_activity || 'General use') + '</p>';
-                facilitiesList.appendChild(dashCard);
-                
                 var imageUrl = 'https://placehold.co/400x200/f0f9ff/0ea5e9?text=' + encodeURIComponent(room.name.replace(/\s/g, '+'));
                 var catCard = document.createElement('div');
                 catCard.className = 'bg-white rounded-xl shadow-lg overflow-hidden border border-slate-100 flex flex-col transition hover:shadow-xl hover:border-sky-300';
@@ -452,69 +593,153 @@
         
         function openReservationModal(roomId) {
             document.getElementById('form-room-id').value = roomId;
-            document.getElementById('equipment-list').innerHTML = '';
-            reservationForm.reset();
-            showModal(reservationModal);
-        }
-        
-        function addEquipmentField() {
-            var equipmentList = document.getElementById('equipment-list');
-            var div = document.createElement('div');
-            div.className = 'equipment-item';
-            div.innerHTML = '<input type="text" placeholder="Equipment name" class="flex-1 px-3 py-2 border rounded-lg equipment-name">' +
-                '<input type="number" placeholder="Qty" class="w-20 px-3 py-2 border rounded-lg equipment-qty">' +
-                '<button type="button" class="text-red-500 remove-equipment">✕</button>';
-            equipmentList.appendChild(div);
-            
-            div.querySelector('.remove-equipment').addEventListener('click', function() {
-                div.remove();
+            document.getElementById('reservation-form').reset();
+            document.getElementById('participant-type-input').value = '';
+            document.getElementById('others-input-container').style.display = 'none';
+            document.getElementById('time-error').style.display = 'none';
+            document.querySelectorAll('.participant-btn').forEach(function(btn) {
+                btn.classList.remove('active');
             });
+            showModal(document.getElementById('reservation-modal'));
         }
         
-        function renderReservations() {
-            var reservationsList = document.getElementById('reservations-list');
-            reservationsList.innerHTML = '';
+        // Participant type buttons
+        document.querySelectorAll('.participant-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.participant-btn').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                this.classList.add('active');
+                var type = this.dataset.type;
+                document.getElementById('participant-type-input').value = type;
+                
+                if (type === 'others') {
+                    document.getElementById('others-input-container').style.display = 'block';
+                } else {
+                    document.getElementById('others-input-container').style.display = 'none';
+                }
+            });
+        });
+        
+        // Equipment checkboxes with quantity
+        equipmentWithQty.forEach(function(item) {
+            var checkbox = document.getElementById('eq-' + item.toLowerCase());
+            var qtyInput = document.getElementById('eq-' + item.toLowerCase() + '-qty');
             
-            var pending = allReservations.filter(function(r) { return !r.archived_at && r.status !== 'approved' && r.status !== 'denied'; });
+            if (checkbox && qtyInput) {
+                checkbox.addEventListener('change', function() {
+                    qtyInput.style.display = this.checked ? 'block' : 'none';
+                    if (this.checked) {
+                        qtyInput.required = true;
+                        qtyInput.value = '1';
+                    } else {
+                        qtyInput.required = false;
+                        qtyInput.value = '';
+                    }
+                });
+            }
+        });
+        
+        // Time validation
+        document.getElementById('end-time').addEventListener('change', validateTime);
+        document.getElementById('start-time').addEventListener('change', validateTime);
+        
+        function validateTime() {
+            var startTime = document.getElementById('start-time').value;
+            var endTime = document.getElementById('end-time').value;
+            var errorEl = document.getElementById('time-error');
             
-            if (pending.length === 0) {
-                reservationsList.innerHTML = '<p class="text-slate-500">No pending reservations.</p>';
+            if (startTime && endTime && startTime >= endTime) {
+                errorEl.style.display = 'block';
+                return false;
+            } else {
+                errorEl.style.display = 'none';
+                return true;
+            }
+        }
+        
+        // Reservation form submission
+        document.getElementById('reservation-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!validateTime()) {
+                showNotification('End time must be after start time');
                 return;
             }
             
-            pending.forEach(function(res) {
-                var statusColor = 'bg-yellow-100 text-yellow-800';
-                if (res.status === 'concept-approved') statusColor = 'bg-blue-100 text-blue-800';
-                
-                var card = document.createElement('div');
-                card.className = 'bg-white p-6 rounded-xl border border-slate-200 hover:shadow-md transition';
-                card.innerHTML = '<div class="flex justify-between items-start mb-4">' +
-                    '<div>' +
-                    '<h4 class="font-bold text-lg text-slate-800">' + res.activity_purpose + '</h4>' +
-                    '<p class="text-sm text-slate-600">By: ' + res.user + ' (' + res.department + ')</p>' +
-                    '<p class="text-xs text-slate-500">Filed: ' + new Date(res.date_filed).toLocaleDateString() + '</p>' +
-                    '<p class="text-sm text-slate-700 mt-2">Attendees: ' + res.attendees + ' | Contact: ' + res.contact_number + '</p>' +
-                    '</div>' +
-                    '<span class="text-xs font-medium px-3 py-1 rounded-full ' + statusColor + '">' + res.status + '</span>' +
-                    '</div>' +
-                    '<div class="flex gap-2">' +
-                    '<button class="view-details-btn flex-1 px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200" data-id="' + res.id + '">View Details</button>' +
-                    (res.status === 'pending' ? '<button class="approve-concept-btn px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-id="' + res.id + '">Approve Concept</button>' : '') +
-                    (res.status === 'concept-approved' && res.final_form_uploaded ? '<button class="approve-final-btn px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-id="' + res.id + '">Final Approve</button>' : '') +
-                    '<button class="deny-btn px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" data-id="' + res.id + '">Deny</button>' +
-                    '<button class="archive-btn px-4 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600" data-id="' + res.id + '">Archive</button>' +
-                    '</div>';
-                reservationsList.appendChild(card);
+            var formData = new FormData();
+            var formElements = this.elements;
+            
+            // Handle participant type
+            var participantType = document.getElementById('participant-type-input').value;
+            if (participantType === 'others') {
+                var othersSpecify = document.getElementById('others-specify').value;
+                if (!othersSpecify) {
+                    showNotification('Please specify participant type for Others');
+                    return;
+                }
+                participantType = 'Others: ' + othersSpecify;
+            }
+            
+            // Build datetime
+            var date = document.getElementById('reservation-date').value;
+            var startTime = document.getElementById('start-time').value;
+            var endTime = document.getElementById('end-time').value;
+            var startDateTime = date + 'T' + startTime;
+            var endDateTime = date + 'T' + endTime;
+            
+            // Collect equipment
+            var equipment = {};
+            document.querySelectorAll('#equipment-checkboxes input[type="checkbox"]:checked').forEach(function(cb) {
+                var name = cb.value;
+                if (equipmentWithQty.includes(name)) {
+                    var qtyInput = document.getElementById('eq-' + name.toLowerCase() + '-qty');
+                    equipment[name] = qtyInput ? qtyInput.value : '1';
+                } else {
+                    equipment[name] = '1';
+                }
             });
             
-            attachReservationHandlers();
-        }
+            // Append all data
+            formData.append('room_id', document.getElementById('form-room-id').value);
+            formData.append('activity_purpose', formElements['activity_purpose'].value);
+            formData.append('division', formElements['division'].value);
+            formData.append('attendees', formElements['attendees'].value);
+            formData.append('participant_type', participantType);
+            formData.append('participant_details', formElements['participant_details'].value);
+            formData.append('classification', formElements['classification'].value);
+            formData.append('person_in_charge', formElements['person_in_charge'].value);
+            formData.append('contact_number', formElements['contact_number'].value);
+            formData.append('start_time', startDateTime);
+            formData.append('end_time', endDateTime);
+            formData.append('equipment_data', JSON.stringify(equipment));
+            formData.append('concept_paper', formElements['concept_paper'].files[0]);
+            
+            try {
+                var response = await fetch('/api/reservations', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    hideModal(document.getElementById('reservation-modal'));
+                    showNotification('Reservation submitted successfully!');
+                    loadReservations();
+                } else {
+                    var error = await response.json();
+                    showNotification('Error: ' + (error.error || 'Submission failed'));
+                }
+            } catch (error) {
+                console.error('Error submitting reservation:', error);
+                showNotification('Connection error');
+            }
+        });
         
         function renderMyReservations() {
             var myList = document.getElementById('my-reservations-list');
             myList.innerHTML = '';
             
-            var mine = allReservations.filter(function(r) { return !r.archived_at && r.user_id === currentUser.id; });
+            var mine = allReservations.filter(function(r) { return !r.archived_at && r.user_id === (currentUser ? currentUser.id : null); });
             
             if (mine.length === 0) {
                 myList.innerHTML = '<p class="text-slate-500">You have no reservations.</p>';
@@ -538,14 +763,255 @@
                     '<span class="text-xs font-medium px-3 py-1 rounded-full ' + statusColor + '">' + res.status + '</span>' +
                     '</div>' +
                     '<div class="flex gap-2">' +
-                    '<button class="view-details-btn flex-1 px-4 py-2 bg-slate-100 rounded-lg hover:bg-slate-200" data-id="' + res.id + '">View Details</button>' +
-                    (res.status === 'concept-approved' && !res.final_form_uploaded ? '<button class="upload-final-btn px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600" data-id="' + res.id + '">Upload Final Form</button>' : '') +
+                    (res.status === 'concept-approved' ? '<button class="view-print-btn flex-1 px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600" data-id="' + res.id + '">View & Print Form</button>' : '') +
+                    (res.status === 'concept-approved' && !res.final_form_uploaded ? '<button class="upload-final-btn px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-id="' + res.id + '">Upload Final Form</button>' : '') +
+                    (res.final_form_uploaded ? '<p class="text-xs text-green-600 px-4 py-2">✓ Final form uploaded</p>' : '') +
                     '</div>';
                 myList.appendChild(card);
             });
             
+            attachMyReservationHandlers();
+        }
+        
+        function attachMyReservationHandlers() {
+            document.querySelectorAll('.view-print-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    viewAndPrintForm(this.dataset.id);
+                });
+            });
+            
+            document.querySelectorAll('.upload-final-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    currentReservationId = this.dataset.id;
+                    showModal(document.getElementById('upload-modal'));
+                });
+            });
+        }
+        
+        async function viewAndPrintForm(id) {
+            try {
+                var response = await fetch('/api/reservations/' + id);
+                if (response.ok) {
+                    var res = await response.json();
+                    var room = roomsFromBackend.find(function(r) { return r.id === res.room_id; });
+                    var equipment = JSON.parse(res.equipment_data || '{}');
+                    
+                    var equipmentList = Object.keys(equipment).map(function(key) {
+                        return key + (equipment[key] !== '1' ? ' (Qty: ' + equipment[key] + ')' : '');
+                    }).join(', ') || 'None';
+                    
+                    var formContent = '<div class="space-y-4">' +
+                        '<div class="grid grid-cols-2 gap-4">' +
+                        '<div><strong>Activity:</strong> ' + res.activity_purpose + '</div>' +
+                        '<div><strong>Division:</strong> ' + res.division + '</div>' +
+                        '<div><strong>Facility:</strong> ' + (room ? room.name : 'Unknown') + '</div>' +
+                        '<div><strong>Attendees:</strong> ' + res.attendees + '</div>' +
+                        '<div><strong>Participant Type:</strong> ' + res.participant_type + '</div>' +
+                        '<div><strong>Classification:</strong> ' + res.classification + '</div>' +
+                        '<div><strong>Person in Charge:</strong> ' + res.person_in_charge + '</div>' +
+                        '<div><strong>Contact:</strong> ' + res.contact_number + '</div>' +
+                        '<div><strong>Date:</strong> ' + new Date(res.start_time).toLocaleDateString() + '</div>' +
+                        '<div><strong>Time:</strong> ' + new Date(res.start_time).toLocaleTimeString() + ' - ' + new Date(res.end_time).toLocaleTimeString() + '</div>' +
+                        '</div>' +
+                        '<div><strong>Participant Details:</strong><p class="mt-1">' + (res.participant_details || 'N/A') + '</p></div>' +
+                        '<div><strong>Equipment Needed:</strong><p class="mt-1">' + equipmentList + '</p></div>' +
+                        '<div class="mt-8 pt-8 border-t">' +
+                        '<div class="grid grid-cols-2 gap-8">' +
+                        '<div class="text-center">' +
+                        '<div class="border-b-2 border-slate-800 mb-2 pb-8"></div>' +
+                        '<p class="font-semibold">Signature of Person in Charge</p>' +
+                        '</div>' +
+                        '<div class="text-center">' +
+                        '<div class="border-b-2 border-slate-800 mb-2 pb-8"></div>' +
+                        '<p class="font-semibold">EMC Approval Signature</p>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>' +
+                        '</div>';
+                    
+                    document.getElementById('form-content').innerHTML = formContent;
+                    showModal(document.getElementById('view-print-modal'));
+                }
+            } catch (error) {
+                console.error('Error loading form:', error);
+            }
+        }
+        
+        document.getElementById('print-form-btn').addEventListener('click', function() {
+            window.print();
+        });
+        
+        document.getElementById('close-view-print').addEventListener('click', function() {
+            hideModal(document.getElementById('view-print-modal'));
+        });
+        
+        function renderReservations() {
+            var reservationsList = document.getElementById('reservations-list');
+            reservationsList.innerHTML = '';
+            
+            var pending = allReservations.filter(function(r) { return !r.archived_at && r.status !== 'approved' && r.status !== 'denied'; });
+            
+            if (pending.length === 0) {
+                reservationsList.innerHTML = '<p class="text-slate-500">No pending reservations.</p>';
+                return;
+            }
+            
+            pending.forEach(function(res) {
+                var statusColor = 'bg-yellow-100 text-yellow-800';
+                if (res.status === 'concept-approved') statusColor = 'bg-blue-100 text-blue-800';
+                
+                var room = roomsFromBackend.find(function(r) { return r.id === res.room_id; });
+                
+                var card = document.createElement('div');
+                card.className = 'bg-white p-6 rounded-xl border border-slate-200 hover:shadow-md transition';
+                card.innerHTML = '<div class="flex justify-between items-start mb-4">' +
+                    '<div>' +
+                    '<h4 class="font-bold text-lg text-slate-800">' + res.activity_purpose + '</h4>' +
+                    '<p class="text-sm text-slate-600">By: ' + res.user + ' (' + res.department + ')</p>' +
+                    '<p class="text-sm text-slate-700">Person in Charge: ' + res.person_in_charge + '</p>' +
+                    '<p class="text-sm text-slate-700">Facility: ' + (room ? room.name : 'Unknown') + '</p>' +
+                    '<p class="text-xs text-slate-500">Filed: ' + new Date(res.date_filed).toLocaleDateString() + '</p>' +
+                    '<p class="text-sm text-slate-700 mt-2">Attendees: ' + res.attendees + ' | Contact: ' + res.contact_number + '</p>' +
+                    '</div>' +
+                    '<span class="text-xs font-medium px-3 py-1 rounded-full ' + statusColor + '">' + res.status + '</span>' +
+                    '</div>' +
+                    '<div class="flex gap-2 mb-3">' +
+                    (res.concept_paper_filename ? '<a href="/static/uploads/' + res.concept_paper_filename + '" target="_blank" class="text-sm text-sky-600 underline">View Concept Paper</a>' : '') +
+                    (res.final_form_uploaded && res.final_form_filename ? '<a href="/static/uploads/' + res.final_form_filename + '" target="_blank" class="text-sm text-green-600 underline ml-4">View Signed Final Form</a>' : '') +
+                    '</div>' +
+                    '<div class="flex gap-2">' +
+                    (res.status === 'pending' ? '<button class="approve-concept-btn px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-id="' + res.id + '">Approve Concept</button>' : '') +
+                    (res.status === 'concept-approved' && res.final_form_uploaded ? '<button class="approve-final-btn px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600" data-id="' + res.id + '">Final Approve</button>' : '') +
+                    '<button class="deny-btn px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" data-id="' + res.id + '">Deny</button>' +
+                    '<button class="archive-btn px-4 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600" data-id="' + res.id + '">Archive</button>' +
+                    '</div>';
+                reservationsList.appendChild(card);
+            });
+            
             attachReservationHandlers();
         }
+        
+        function attachReservationHandlers() {
+            document.querySelectorAll('.approve-concept-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    approveConceptAction(this.dataset.id);
+                });
+            });
+            
+            document.querySelectorAll('.approve-final-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    approveFinalAction(this.dataset.id);
+                });
+            });
+            
+            document.querySelectorAll('.deny-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    currentReservationId = this.dataset.id;
+                    showModal(document.getElementById('denial-modal'));
+                });
+            });
+            
+            document.querySelectorAll('.archive-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    archiveReservation(this.dataset.id);
+                });
+            });
+        }
+        
+        async function approveConceptAction(id) {
+            try {
+                var response = await fetch('/api/reservations/' + id + '/approve-concept', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    showNotification('Concept approved! User can now print and upload final form.');
+                    loadReservations();
+                }
+            } catch (error) {
+                console.error('Error approving concept:', error);
+            }
+        }
+        
+        async function approveFinalAction(id) {
+            try {
+                var response = await fetch('/api/reservations/' + id + '/approve-final', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    showNotification('Reservation fully approved!');
+                    loadReservations();
+                }
+            } catch (error) {
+                console.error('Error approving final:', error);
+            }
+        }
+        
+        async function archiveReservation(id) {
+            try {
+                var response = await fetch('/api/reservations/' + id + '/archive', {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    showNotification('Reservation archived.');
+                    loadReservations();
+                }
+            } catch (error) {
+                console.error('Error archiving:', error);
+            }
+        }
+        
+        document.getElementById('confirm-deny').addEventListener('click', async function() {
+            var reason = document.getElementById('denial-reason').value;
+            if (!reason) {
+                showNotification('Please enter a reason');
+                return;
+            }
+            
+            try {
+                var response = await fetch('/api/reservations/' + currentReservationId + '/deny', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason })
+                });
+                
+                if (response.ok) {
+                    hideModal(document.getElementById('denial-modal'));
+                    showNotification('Reservation denied');
+                    document.getElementById('denial-reason').value = '';
+                    loadReservations();
+                }
+            } catch (error) {
+                console.error('Error denying:', error);
+            }
+        });
+        
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            
+            try {
+                var response = await fetch('/api/reservations/' + currentReservationId + '/upload-final-form', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    hideModal(document.getElementById('upload-modal'));
+                    showNotification('Final form uploaded successfully!');
+                    this.reset();
+                    loadReservations();
+                } else {
+                    var error = await response.json();
+                    showNotification('Error: ' + (error.error || 'Upload failed'));
+                }
+            } catch (error) {
+                console.error('Error uploading:', error);
+                showNotification('Connection error');
+            }
+        });
         
         function renderArchive() {
             var archiveList = document.getElementById('archive-list');
@@ -607,280 +1073,44 @@
                 
                 if (eventsOnDay.length > 0) {
                     dayDiv.classList.add('has-event');
-                    dayDiv.innerHTML += '<div class="text-xs text-sky-600 font-semibold mt-1">' + eventsOnDay.length + ' event(s)</div>';
+                    eventsOnDay.forEach(function(event) {
+                        var eventName = document.createElement('div');
+                        eventName.className = 'event-name';
+                        eventName.textContent = event.activity_purpose;
+                        eventName.title = event.activity_purpose;
+                        dayDiv.appendChild(eventName);
+                    });
                 }
                 
                 calendarDays.appendChild(dayDiv);
             }
         }
         
-        function attachReservationHandlers() {
-            document.querySelectorAll('.view-details-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    viewReservationDetails(this.dataset.id);
-                });
-            });
-            
-            document.querySelectorAll('.approve-concept-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    approveConceptAction(this.dataset.id);
-                });
-            });
-            
-            document.querySelectorAll('.approve-final-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    approveFinalAction(this.dataset.id);
-                });
-            });
-            
-            document.querySelectorAll('.deny-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    currentReservationId = this.dataset.id;
-                    showModal(denialModal);
-                });
-            });
-            
-            document.querySelectorAll('.archive-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    archiveReservation(this.dataset.id);
-                });
-            });
-            
-            document.querySelectorAll('.upload-final-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    currentReservationId = this.dataset.id;
-                    showModal(uploadModal);
-                });
-            });
-        }
-        
-        async function viewReservationDetails(id) {
-            try {
-                var response = await fetch('/api/reservations/' + id);
-                if (response.ok) {
-                    var res = await response.json();
-                    var room = roomsFromBackend.find(function(r) { return r.id === res.room_id; });
-                    var equipment = JSON.parse(res.equipment_data || '{}');
-                    
-                    var content = '<h3 class="text-2xl font-bold mb-4">' + res.activity_purpose + '</h3>' +
-                        '<div class="grid grid-cols-2 gap-4 mb-4">' +
-                        '<div><span class="font-semibold">Facility:</span> ' + (room ? room.name : 'Unknown') + '</div>' +
-                        '<div><span class="font-semibold">Division:</span> ' + res.division + '</div>' +
-                        '<div><span class="font-semibold">Attendees:</span> ' + res.attendees + '</div>' +
-                        '<div><span class="font-semibold">Classification:</span> ' + res.classification + '</div>' +
-                        '<div><span class="font-semibold">Person in Charge:</span> ' + res.person_in_charge + '</div>' +
-                        '<div><span class="font-semibold">Contact:</span> ' + res.contact_number + '</div>' +
-                        '<div><span class="font-semibold">Start:</span> ' + new Date(res.start_time).toLocaleString() + '</div>' +
-                        '<div><span class="font-semibold">End:</span> ' + new Date(res.end_time).toLocaleString() + '</div>' +
-                        '</div>' +
-                        '<div class="mb-4"><span class="font-semibold">Participant Details:</span><p>' + res.participant_details + '</p></div>' +
-                        (res.concept_paper_filename ? '<div class="mb-4"><a href="/static/uploads/' + res.concept_paper_filename + '" target="_blank" class="text-sky-500 underline">View Concept Paper</a></div>' : '') +
-                        (res.final_form_filename ? '<div class="mb-4"><a href="/static/uploads/' + res.final_form_filename + '" target="_blank" class="text-sky-500 underline">View Final Form</a></div>' : '') +
-                        '<button onclick="document.getElementById(\'details-modal\').classList.remove(\'visible\')" class="w-full bg-slate-500 text-white py-2 rounded-lg hover:bg-slate-600">Close</button>';
-                    
-                    document.getElementById('details-content').innerHTML = content;
-                    showModal(detailsModal);
-                }
-            } catch (error) {
-                console.error('Error loading details:', error);
+        document.getElementById('prev-month').addEventListener('click', function() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
             }
-        }
-        
-        async function approveConceptAction(id) {
-            try {
-                var response = await fetch('/api/reservations/' + id + '/approve-concept', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (response.ok) {
-                    showNotification('Concept approved! User can now upload final form.');
-                    loadReservations();
-                }
-            } catch (error) {
-                console.error('Error approving concept:', error);
-            }
-        }
-        
-        async function approveFinalAction(id) {
-            try {
-                var response = await fetch('/api/reservations/' + id + '/approve-final', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (response.ok) {
-                    showNotification('Reservation fully approved!');
-                    loadReservations();
-                }
-            } catch (error) {
-                console.error('Error approving final:', error);
-            }
-        }
-        
-        async function archiveReservation(id) {
-            try {
-                var response = await fetch('/api/reservations/' + id + '/archive', {
-                    method: 'POST'
-                });
-                if (response.ok) {
-                    showNotification('Reservation archived.');
-                    loadReservations();
-                }
-            } catch (error) {
-                console.error('Error archiving:', error);
-            }
-        }
-        
-        function setupUI() {
-            var avatarUrl = currentUser.role === 'admin' 
-                ? 'https://placehold.co/100x100/0ea5e9/ffffff?text=A' 
-                : 'https://placehold.co/100x100/64748b/ffffff?text=U';
-            
-            document.getElementById('sidebar-avatar').src = avatarUrl;
-            document.getElementById('sidebar-username').textContent = currentUser.username;
-            document.getElementById('dashboard-title').textContent = 'Welcome, ' + currentUser.username;
-            document.getElementById('admin-nav-section').style.display = currentUser.role === 'admin' ? 'block' : 'none';
-            
-            updateDateTime();
-            renderFacilities();
-            loadReservations();
-        }
-        
-        function switchView(viewName) {
-            navButtons.forEach(function(btn) {
-                btn.classList.toggle('active', btn.dataset.view === viewName);
-            });
-            var contentViews = document.querySelectorAll('.main-content > [data-view]');
-            contentViews.forEach(function(view) {
-                if (view.dataset.view === viewName) {
-                    view.classList.remove('hidden');
-                } else {
-                    view.classList.add('hidden');
-                }
-            });
-        }
-        
-        // Login
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            loginError.textContent = '';
-            
-            var username = document.getElementById('username').value;
-            var password = document.getElementById('password').value;
-            
-            fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: username, password: password })
-            })
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                if (data.status === 'success') {
-                    currentUser = { 
-                        id: data.user_id,
-                        username: data.username, 
-                        role: data.role,
-                        department: data.department
-                    };
-                    loginPage.style.display = 'none';
-                    appContainer.classList.remove('hidden');
-                    setupUI();
-                    showNotification('Welcome, ' + username + '!');
-                } else {
-                    loginError.textContent = data.message || 'Invalid credentials';
-                }
-            })
-            .catch(function(error) {
-                console.error('Login error:', error);
-                loginError.textContent = 'Connection error';
-            });
+            renderCalendar();
         });
         
-        // Reservation form
-        reservationForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            var formData = new FormData(reservationForm);
-            
-            var equipmentData = {};
-            document.querySelectorAll('.equipment-item').forEach(function(item) {
-                var name = item.querySelector('.equipment-name').value;
-                var qty = item.querySelector('.equipment-qty').value;
-                if (name) equipmentData[name] = qty;
-            });
-            formData.append('equipment_data', JSON.stringify(equipmentData));
-            
-            try {
-                var response = await fetch('/api/reservations', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    hideModal(reservationModal);
-                    showNotification('Reservation submitted successfully!');
-                    loadReservations();
-                } else {
-                    var error = await response.json();
-                    showNotification('Error: ' + (error.error || 'Submission failed'));
-                }
-            } catch (error) {
-                console.error('Error submitting reservation:', error);
-                showNotification('Connection error');
+        document.getElementById('next-month').addEventListener('click', function() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
             }
+            renderCalendar();
         });
         
-        // Upload final form
-        uploadForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            var formData = new FormData(uploadForm);
-            
-            try {
-                var response = await fetch('/api/reservations/' + currentReservationId + '/upload-final-form', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    hideModal(uploadModal);
-                    showNotification('Final form uploaded successfully!');
-                    loadReservations();
-                } else {
-                    var error = await response.json();
-                    showNotification('Error: ' + (error.error || 'Upload failed'));
-                }
-            } catch (error) {
-                console.error('Error uploading:', error);
-                showNotification('Connection error');
-            }
-        });
+        // Chat functionality
+        var chatButton = document.getElementById('chat-button');
+        var chatWindow = document.getElementById('chat-window');
+        var chatForm = document.getElementById('chat-form');
+        var chatInput = document.getElementById('chat-input');
+        var chatMessages = document.getElementById('chat-messages');
         
-        // Denial
-        document.getElementById('confirm-deny').addEventListener('click', async function() {
-            var reason = document.getElementById('denial-reason').value;
-            if (!reason) {
-                showNotification('Please enter a reason');
-                return;
-            }
-            
-            try {
-                var response = await fetch('/api/reservations/' + currentReservationId + '/deny', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ reason: reason })
-                });
-                
-                if (response.ok) {
-                    hideModal(denialModal);
-                    showNotification('Reservation denied');
-                    loadReservations();
-                }
-            } catch (error) {
-                console.error('Error denying:', error);
-            }
-        });
-        
-        // Chat
         chatButton.addEventListener('click', function() {
             chatWindow.style.display = 'flex';
             chatButton.style.display = 'none';
@@ -911,7 +1141,7 @@
                     var data = await response.json();
                     chatMessages.innerHTML += '<div class="message ai"><div class="bubble">' + data.response + '</div></div>';
                 } else {
-                    chatMessages.innerHTML += '<div class="message ai"><div class="bubble">Sorry, I encountered an error.</div></div>';
+                    chatMessages.innerHTML += '<div class="message ai"><div class="bubble">Sorry, I can only help with campus facility reservations.</div></div>';
                 }
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             } catch (error) {
@@ -919,59 +1149,105 @@
             }
         });
         
-        // Calendar navigation
-        document.getElementById('prev-month').addEventListener('click', function() {
-            currentMonth--;
-            if (currentMonth < 0) {
-                currentMonth = 11;
-                currentYear--;
-            }
-            renderCalendar();
-        });
+        function setupUI() {
+            var avatarUrl = currentUser.role === 'admin' 
+                ? 'https://placehold.co/100x100/0ea5e9/ffffff?text=A' 
+                : 'https://placehold.co/100x100/64748b/ffffff?text=U';
+            
+            document.getElementById('sidebar-avatar').src = avatarUrl;
+            document.getElementById('sidebar-username').textContent = currentUser.username;
+            document.getElementById('dashboard-title').textContent = 'Welcome, ' + currentUser.username;
+            document.getElementById('admin-nav-section').style.display = currentUser.role === 'admin' ? 'block' : 'none';
+            
+            updateDateTime();
+            renderFacilities();
+            loadReservations();
+        }
         
-        document.getElementById('next-month').addEventListener('click', function() {
-            currentMonth++;
-            if (currentMonth > 11) {
-                currentMonth = 0;
-                currentYear++;
-            }
-            renderCalendar();
-        });
+        function switchView(viewName) {
+            document.querySelectorAll('.nav-button').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.view === viewName);
+            });
+            var contentViews = document.querySelectorAll('.main-content > [data-view]');
+            contentViews.forEach(function(view) {
+                if (view.dataset.view === viewName) {
+                    view.classList.remove('hidden');
+                } else {
+                    view.classList.add('hidden');
+                }
+            });
+        }
         
-        // Event listeners
-        logoutBtn.addEventListener('click', function() {
-            fetch('/logout').then(function() {
-                currentUser = null;
-                loginPage.style.display = 'flex';
-                appContainer.classList.add('hidden');
-                loginForm.reset();
+        // Login
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('login-error').textContent = '';
+            
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            
+            fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password })
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.status === 'success') {
+                    currentUser = { 
+                        id: data.user_id,
+                        username: data.username, 
+                        role: data.role,
+                        department: data.department
+                    };
+                    document.getElementById('login-page').style.display = 'none';
+                    document.getElementById('app-container').classList.remove('hidden');
+                    setupUI();
+                    showNotification('Welcome, ' + username + '!');
+                } else {
+                    document.getElementById('login-error').textContent = data.message || 'Invalid credentials';
+                }
+            })
+            .catch(function(error) {
+                console.error('Login error:', error);
+                document.getElementById('login-error').textContent = 'Connection error';
             });
         });
         
-        navButtons.forEach(function(button) {
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            fetch('/logout').then(function() {
+                currentUser = null;
+                document.getElementById('login-page').style.display = 'flex';
+                document.getElementById('app-container').classList.add('hidden');
+                document.getElementById('login-form').reset();
+            });
+        });
+        
+        // Navigation
+        document.querySelectorAll('.nav-button').forEach(function(button) {
             button.addEventListener('click', function() {
                 var view = button.dataset.view;
                 switchView(view);
             });
         });
         
+        // Modal buttons
         document.getElementById('cancel-reservation').addEventListener('click', function() {
-            hideModal(reservationModal);
+            hideModal(document.getElementById('reservation-modal'));
         });
         
         document.getElementById('cancel-upload').addEventListener('click', function() {
-            hideModal(uploadModal);
+            hideModal(document.getElementById('upload-modal'));
         });
         
         document.getElementById('cancel-deny').addEventListener('click', function() {
-            hideModal(denialModal);
+            hideModal(document.getElementById('denial-modal'));
         });
         
         document.getElementById('notification-ok').addEventListener('click', function() { 
-            hideModal(notificationModal); 
+            hideModal(document.getElementById('notification-modal')); 
         });
-        
-        document.getElementById('add-equipment').addEventListener('click', addEquipmentField);
     });
 </script>
 
